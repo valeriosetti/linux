@@ -325,6 +325,12 @@ config TOUCHSCREEN_DA9052
 	  To compile this driver as a module, choose M here: the
 	  module will be called da9052_tsi.
 
+config TOUCHSCREEN_DWAV_USB_MT
+	tristate "Dwav USB multitouch"
+	help
+	  Say Y here to support the Hardkernel's multi touch driver which is
+	  used on the VU7 display
+
 config TOUCHSCREEN_DYNAPRO
 	tristate "Dynapro serial touchscreen"
 	select SERIO
