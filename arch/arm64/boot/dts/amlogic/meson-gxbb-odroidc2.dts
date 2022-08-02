@@ -195,7 +195,8 @@
 			mclk-fs = <256>;
 
 			codec-0 {
-				sound-dai = <&aiu AIU_HDMI CTRL_I2S>;
+				//sound-dai = <&aiu AIU_HDMI CTRL_I2S>;
+				sound-dai = <&sgtl5000>;
 			};
 		};
 
@@ -267,10 +268,28 @@
 	pinctrl-0 = <&i2c_a_pins>;
 	pinctrl-names = "default";
 
-	sgtl5000: sgtl5000@0a	{
+	sgtl5000: sgtl5000@a	{
 		status = "okay";
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
+
+		#sound-dai-cells = <0>;
+		clocks = <&clkc CLKID_CTS_AMCLK>;
+
+		VDDA-supply = <&vcc3v3>;
+		VDDIO-supply = <&vcc3v3>;
+
+		// Turn on AMCLK automatically for probing otherwise the device won't
+		// answer on I2C
+		assigned-clocks = <&clkc CLKID_CTS_AMCLK>;
+		assigned-clock-rates = <12288000>;
+
+		// Configure I2S pins
+		pinctrl-0 = <&i2s_am_clk_pins
+					&i2s_out_ao_clk_pins
+					&i2s_out_lr_clk_pins
+					&i2s_out_ch01_ao_pins>;
+		pinctrl-names = "default";
 	};
 };
 
