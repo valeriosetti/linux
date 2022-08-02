@@ -266,6 +266,12 @@
 	status = "okay";
 	pinctrl-0 = <&i2c_a_pins>;
 	pinctrl-names = "default";
+
+	sgtl5000: sgtl5000@0a	{
+		status = "okay";
+		compatible = "fsl,sgtl5000";
+		reg = <0x0a>;
+	};
 };
 
 &ir {
