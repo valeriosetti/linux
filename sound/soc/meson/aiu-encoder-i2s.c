@@ -240,6 +240,13 @@ static int aiu_encoder_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	    inv == SND_SOC_DAIFMT_IB_IF)
 		val |= AIU_CLK_CTRL_AOCLK_INVERT;
 
+	/* bit-clock seems not to have the correct polarity by default. However
+	 * it cannot be changed with the "bitclock-inversion" DT property
+	 * otherwise this would propagate also to the external codec, thus
+	 * making the change unrelevant
+	 */
+	val ^= AIU_CLK_CTRL_AOCLK_INVERT;
+
 	/* Signal skew */
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
