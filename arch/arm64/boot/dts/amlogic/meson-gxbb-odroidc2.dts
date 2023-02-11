@@ -208,6 +208,22 @@
 			};
 		};
 	};
+
+	spi-gpio {
+		compatible = "spi-gpio";
+		gpio-sck = <&gpio GPIOX_2 GPIO_ACTIVE_HIGH>;
+		gpio-mosi = <&gpio GPIOX_7 GPIO_ACTIVE_HIGH>;
+		gpio-miso = <&gpio GPIOX_4 GPIO_ACTIVE_HIGH>;
+		cs-gpios = <&gpio GPIOX_1 GPIO_ACTIVE_HIGH>;
+		num-chipselects = <1>;
+		
+		spidev@0{
+			compatible = "rohm,dh2228fv";
+			reg = <0>;
+			status = "okay";
+			spi-max-frequency = <1000000>;
+		};
+	};
 };
 
 &aiu {
