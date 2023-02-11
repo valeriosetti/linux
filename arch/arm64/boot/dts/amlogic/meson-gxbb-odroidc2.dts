@@ -211,6 +211,24 @@
 			};
 		};
 	};
+
+	spi {
+		compatible = "spi-gpio";
+		#address-cells = <0x1>;
+		#size-cells = <0x0>;
+		sck-gpios = <&gpio GPIOX_2 GPIO_ACTIVE_HIGH>;
+		mosi-gpios = <&gpio GPIOX_7 GPIO_ACTIVE_HIGH>;
+		miso-gpios = <&gpio GPIOX_4 GPIO_ACTIVE_HIGH>;
+		cs-gpios = <&gpio GPIOX_1 GPIO_ACTIVE_HIGH>;
+		num-chipselects = <1>;
+
+		spidev@0 {
+			compatible = "rohm,dh2228fv";
+			reg = <0>;
+			status = "okay";
+			spi-max-frequency = <1000000>;
+		};
+	};
 };
 
 &aiu {
