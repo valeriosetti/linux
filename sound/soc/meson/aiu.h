@@ -52,6 +52,7 @@ int aiu_of_xlate_dai_name(struct snd_soc_component *component,
 int aiu_hdmi_ctrl_register_component(struct device *dev);
 int aiu_acodec_ctrl_register_component(struct device *dev);
 
+int aiu_encoder_i2s_dai_probe(struct snd_soc_dai *dai);
 int aiu_fifo_i2s_dai_probe(struct snd_soc_dai *dai);
 int aiu_fifo_spdif_dai_probe(struct snd_soc_dai *dai);
 

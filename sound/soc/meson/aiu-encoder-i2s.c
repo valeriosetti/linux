@@ -5,6 +5,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/clk.h>
+#include <linux/mutex.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/soc-dai.h>
@@ -26,6 +27,12 @@
 #define AIU_CLK_CTRL_MORE_HDMI_AMCLK	BIT(6)
 #define AIU_CLK_CTRL_MORE_I2S_DIV	GENMASK(5, 0)
 #define AIU_CODEC_DAC_LRCLK_CTRL_DIV	GENMASK(11, 0)
+
+struct aiu_encoder_data {
+	/* Internal counter to track usage of I2S clocks. See description of
+	 * find_aiu_enc_dai() in audin-i2s-decoder.*/
+	int ref_counter;
+};
 
 static void aiu_encoder_i2s_divider_enable(struct snd_soc_component *component,
 					   bool enable)
@@ -189,6 +196,7 @@ static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 				     struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
+	struct aiu_encoder_data *enc_data = dai->playback_dma_data;
 	int ret;
 
 	/* Disable the clock while changing the settings */
@@ -208,6 +216,8 @@ static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	aiu_encoder_i2s_divider_enable(component, true);
 
+	enc_data->ref_counter++;
+
 	return 0;
 }
 
@@ -215,8 +225,16 @@ static int aiu_encoder_i2s_hw_free(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
+	struct aiu_encoder_data *enc_data = dai->playback_dma_data;
 
-	aiu_encoder_i2s_divider_enable(component, false);
+	if (enc_data->ref_counter > 0) {
+		enc_data->ref_counter--;
+	}
+
+	/* Disable all the clocks only if there is no one else using them */
+	if (enc_data->ref_counter == 0) {
+		aiu_encoder_i2s_divider_enable(component, false);
+	}
 
 	return 0;
 }
@@ -329,3 +347,16 @@ const struct snd_soc_dai_ops aiu_encoder_i2s_dai_ops = {
 	.shutdown	= aiu_encoder_i2s_shutdown,
 };
 
+int aiu_encoder_i2s_dai_probe(struct snd_soc_dai *dai)
+{
+	struct aiu_encoder_data *enc_data;
+
+	enc_data = kzalloc(sizeof(struct aiu_encoder_data),GFP_KERNEL);
+	if (enc_data == NULL) {
+		return -ENOMEM;
+	}
+
+	dai->playback_dma_data = enc_data;
+
+	return 0;
+}
