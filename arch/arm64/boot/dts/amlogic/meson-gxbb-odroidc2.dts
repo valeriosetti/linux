@@ -10,6 +10,7 @@
 #include "meson-gxbb.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/sound/meson-aiu.h>
+#include <dt-bindings/sound/meson-audin.h>
 
 / {
 	compatible = "hardkernel,odroid-c2", "amlogic,meson-gxbb";
@@ -201,10 +202,16 @@
 		};
 
 		dai-link-2 {
-			sound-dai = <&aiu AIU_HDMI CTRL_OUT>;
+			sound-dai = <&audin CPU_AUDIN_TODDR_0>;
+		};
+
+		dai-link-3 {
+			sound-dai = <&audin CPU_AUDIN_I2S_DECODER>;
+			dai-format = "i2s";
+			mclk-fs = <256>;
 
 			codec-0 {
-				sound-dai = <&hdmi_tx>;
+				sound-dai = <&sgtl5000>;
 			};
 		};
 	};
@@ -212,6 +219,12 @@
 
 &aiu {
 	status = "okay";
+};
+
+&audin {
+	status = "okay";
+	// TODO: handle the FIFO source. Something like:
+	// fifo0-src = <FIFO_SRC_I2S>;
 };
 
 &cec_AO {

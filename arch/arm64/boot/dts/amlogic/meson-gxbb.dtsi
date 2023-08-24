@@ -84,6 +84,15 @@
 	resets = <&reset RESET_AIU>;
 };
 
+&audin {
+	compatible = "amlogic,audin-gxbb", "amlogic,audin";
+	clocks = <&clkc CLKID_AIU_GLUE>,
+		 <&clkc CLKID_I2S_SPDIF>;
+	clock-names = "pclk",
+		      "i2s_input_clk";
+	resets = <&reset RESET_AUDIN>;
+};
+
 &aobus {
 	pinctrl_aobus: pinctrl@14 {
 		compatible = "amlogic,meson-gxbb-aobus-pinctrl";
