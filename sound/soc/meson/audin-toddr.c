@@ -364,6 +364,7 @@ snd_pcm_uframes_t audin_toddr_pointer(struct snd_soc_component *component,
 	return bytes_to_frames(runtime, ptr - start);
 }
 
+#if 0
 static __maybe_unused void dump_buffer(uint8_t *buf, unsigned int len, int size)
 {
 	int i;
@@ -390,6 +391,7 @@ static __maybe_unused void dump_buffer(uint8_t *buf, unsigned int len, int size)
 	}
 	pr_warn("[DEBUG] %s\n", output);
 }
+#endif
 
 static void reorder_buffer_s16(unsigned char *buf, unsigned long len)
 {
