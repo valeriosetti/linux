@@ -303,17 +303,6 @@ int audin_toddr_startup(struct snd_pcm_substream *substream,
 	if (ret)
 		return ret;
 
-	/* Select I2S source. This is hardcoded since it's the only one
-	 * that has been tested. According to the manual options are:
-	 * - 0: SPDIF in
-	 * - 1: I2S in
-	 * - 2: PCM in
-	 * - 3: HDMI in
-	 * - 4: demodulator in */
-	val = FIELD_PREP(AUDIN_FIFO_CTRL_DIN_SEL_MASK, 1);
-	snd_soc_component_update_bits(dai->component, fifo->reg->ctrl,
-				      AUDIN_FIFO_CTRL_DIN_SEL_MASK, val);
-
 	/* Clear any previous pending IRQ flag before enabling it */
 	val = AUDIN_FIFO_INT_FIFO0_ADDR_TRIG | AUDIN_FIFO_INT_FIFO0_OVERFLOW;
 	snd_soc_component_update_bits(dai->component, AUDIN_FIFO_INT, val, val);

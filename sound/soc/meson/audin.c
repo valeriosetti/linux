@@ -15,6 +15,28 @@
 #include <dt-bindings/sound/meson-audin.h>
 #include "audin.h"
 
+static const char * const audin_fifo_input_sel_texts[] = {
+	"SPDIF", "I2S", "PCM", "HDMI", "Demodulator"
+};
+
+static SOC_ENUM_SINGLE_DECL(audin_fifo0_input_sel_enum, AUDIN_FIFO0_CTRL,
+			    AUDIN_FIFO_CTRL_DIN_SEL_OFF,
+			    audin_fifo_input_sel_texts);
+
+static SOC_ENUM_SINGLE_DECL(audin_fifo1_input_sel_enum, AUDIN_FIFO1_CTRL,
+			    AUDIN_FIFO_CTRL_DIN_SEL_OFF,
+			    audin_fifo_input_sel_texts);
+
+static SOC_ENUM_SINGLE_DECL(audin_fifo2_input_sel_enum, AUDIN_FIFO2_CTRL,
+			    AUDIN_FIFO_CTRL_DIN_SEL_OFF,
+			    audin_fifo_input_sel_texts);
+
+static const struct snd_kcontrol_new audin_fifo_input_control[] = {
+	SOC_ENUM("FIFO0 Src", audin_fifo0_input_sel_enum),
+	SOC_ENUM("FIFO1 Src", audin_fifo1_input_sel_enum),
+	SOC_ENUM("FIFO2 Src", audin_fifo2_input_sel_enum),
+};
+
 static const struct snd_soc_dapm_route audin_cpu_dapm_routes[] = {
 	{ "TODDR 0 Capture", NULL, "I2S Decoder Capture" },
 };
@@ -61,6 +83,8 @@ static void audin_cpu_component_remove(struct snd_soc_component *component)
 
 static const struct snd_soc_component_driver audin_cpu_component = {
 	.name			= "AUDIN CPU",
+	.controls		= audin_fifo_input_control,
+	.num_controls		= ARRAY_SIZE(audin_fifo_input_control),
 	.dapm_widgets		= NULL,
 	.num_dapm_widgets	= 0,
 	.dapm_routes		= audin_cpu_dapm_routes,
