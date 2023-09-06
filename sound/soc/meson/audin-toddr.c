@@ -12,41 +12,6 @@
 
 #include "audin.h"
 
-/* Bits of the FIFO CTRL register */
-#define AUDIN_FIFO_CTRL_EN		BIT(0)
-#define AUDIN_FIFO_CTRL_RST		BIT(1)
-#define AUDIN_FIFO_CTRL_LOAD		BIT(2)
-#define AUDIN_FIFO_CTRL_DIN_SEL_MASK	GENMASK(5, 3)
-#define AUDIN_FIFO_CTRL_ENDIAN_MASK	GENMASK(10, 8)
-#define AUDIN_FIFO_CTRL_CHAN_MASK	GENMASK(14, 11)
-#define AUDIN_FIFO_CTRL_UG		BIT(15)
-
-/* Bits of the FIFO CTRL1 register */
-#define AUDIN_FIFO_CTRL1_DIN_POS_2		BIT(7)
-#define AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK	GENMASK(3, 2)
-#define AUDIN_FIFO_CTRL1_DIN_POS_01_MASK	GENMASK(1, 0)
-
-/* Bits of the FIFO REQID register */
-#define AUDIN_FIFO_REQID_AUDIN_REQ_BURST_NUM_MASK	GENMASK(17, 12)
-#define AUDIN_FIFO_REQID_FIFO_REQ_BURST_NUM_MASK	GENMASK(11, 6)
-#define AUDIN_FIFO_REQID_FIFO_REQ_ID_MASK		GENMASK(5, 0)
-
-/* Bits of the INT CTRL register */
-#define AUDIN_INT_CTRL_FIFO0_OVERFLOW		BIT(0)
-#define AUDIN_INT_CTRL_FIFO0_ADDR_TRIG		BIT(1)
-#define AUDIN_INT_CTRL_FIFO1_OVERFLOW		BIT(2)
-#define AUDIN_INT_CTRL_FIFO1_ADDR_TRIG		BIT(3)
-#define AUDIN_INT_CTRL_FIFO2_OVERFLOW		BIT(11)
-#define AUDIN_INT_CTRL_FIFO2_ADDR_TRIG		BIT(12)
-
-/* Bits of the FIFO INT register */
-#define AUDIN_FIFO_INT_FIFO0_OVERFLOW		BIT(0)
-#define AUDIN_FIFO_INT_FIFO0_ADDR_TRIG		BIT(1)
-#define AUDIN_FIFO_INT_FIFO1_OVERFLOW		BIT(2)
-#define AUDIN_FIFO_INT_FIFO1_ADDR_TRIG		BIT(3)
-#define AUDIN_FIFO_INT_FIFO2_OVERFLOW		BIT(11)
-#define AUDIN_FIFO_INT_FIFO2_ADDR_TRIG		BIT(12)
-
 struct fifo_regs {
 	unsigned int start;
 	unsigned int end;
@@ -55,7 +20,6 @@ struct fifo_regs {
 	unsigned int rdptr;
 	unsigned int ctrl;
 	unsigned int ctrl1;
-	unsigned int reqid;
 	unsigned int wrap;
 };
 
@@ -77,7 +41,6 @@ struct fifo_regs audin_fifo_regs[AUDIN_FIFO_COUNT] = {
 		.rdptr	= AUDIN_FIFO0_RDPTR,
 		.ctrl	= AUDIN_FIFO0_CTRL,
 		.ctrl1	= AUDIN_FIFO0_CTRL1,
-		.reqid	= AUDIN_FIFO0_REQID,
 		.wrap	= AUDIN_FIFO0_WRAP,
 	},
 	[1] = {
@@ -88,7 +51,6 @@ struct fifo_regs audin_fifo_regs[AUDIN_FIFO_COUNT] = {
 		.rdptr	= AUDIN_FIFO1_RDPTR,
 		.ctrl	= AUDIN_FIFO1_CTRL,
 		.ctrl1	= AUDIN_FIFO1_CTRL1,
-		.reqid	= AUDIN_FIFO1_REQID,
 		.wrap	= AUDIN_FIFO1_WRAP,
 	},
 	[2] = {
@@ -99,7 +61,6 @@ struct fifo_regs audin_fifo_regs[AUDIN_FIFO_COUNT] = {
 		.rdptr	= AUDIN_FIFO2_RDPTR,
 		.ctrl	= AUDIN_FIFO2_CTRL,
 		.ctrl1	= AUDIN_FIFO2_CTRL1,
-		.reqid	= AUDIN_FIFO2_REQID,
 		.wrap	= AUDIN_FIFO2_WRAP,
 	}
 };
@@ -130,7 +91,6 @@ struct fifo_regs_bit_masks auding_fifo_regs_bit_masks[AUDIN_FIFO_COUNT] = {
  * generated when the input buffer has been written to multiple of this
  * value. */
 #define AUDIN_FIFO_I2S_BLOCK		4096
-#define AUDIN_FIFO_I2S_BLOCK_MASK	(~(AUDIN_FIFO_I2S_BLOCK - 1))
 
 static struct snd_pcm_hardware toddr_pcm_hw = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED |
@@ -428,7 +388,7 @@ static __maybe_unused void dump_buffer(uint8_t *buf, unsigned int len, int size)
 			out_ptr += sprintf(out_ptr, "%hd ", s16_val);
 		}
 	}
-	DEBUG_MSG("%s", output);
+	pr_warn("[DEBUG] %s\n", output);
 }
 
 static void reorder_buffer_s16(unsigned char *buf, unsigned long len)

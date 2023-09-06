@@ -11,17 +11,6 @@
 
 #include "audin.h"
 
-/* Bits of the CTRL register */
-#define AUDIN_I2SIN_CTRL_I2SIN_DIR			BIT(0)
-#define AUDIN_I2SIN_CTRL_I2SIN_CLK_SEL			BIT(1)
-#define AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SEL		BIT(2)
-#define AUDIN_I2SIN_CTRL_I2SIN_POS_SYNC			BIT(3)
-#define AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SKEW_MASK		GENMASK(6, 4)
-#define AUDIN_I2SIN_CTRL_I2SIN_LRCLK_INV		BIT(7)
-#define AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK		GENMASK(9, 8)
-#define AUDIN_I2SIN_CTRL_I2SIN_CHAN_EN_MASK		GENMASK(13, 10)
-#define AUDIN_I2SIN_CTRL_I2SIN_EN			BIT(15)
-
 static int audin_i2s_decoder_hw_params(struct snd_pcm_substream *substream,
 				     struct snd_pcm_hw_params *params,
 				     struct snd_soc_dai *dai)
