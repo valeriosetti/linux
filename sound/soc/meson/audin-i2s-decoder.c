@@ -62,7 +62,7 @@ static int audin_i2s_decoder_hw_params(struct snd_pcm_substream *substream,
 				      AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK, val);
 
 	/* This SOC only has 1 pin for I2S input, so it cannot support more
-	 * than 1 channel. Therefore we enforce and hardcode this value. */
+	 * than 2 channels. Therefore we enforce and hardcode this value. */
 	if (params_channels(params) != 2) {
 		dev_warn(dai->dev, "Warning: unsupported channel number %d",
 			params_channels(params));
