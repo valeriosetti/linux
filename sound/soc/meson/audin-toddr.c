@@ -425,6 +425,9 @@ static void reorder_buffer_s24_s32(unsigned char *buf, unsigned long len)
 	}
 }
 
+/* The copy_user function is required because the FIFO do not save samples
+ * in memory in the proper way that is usable from userspace, so we have to
+ * reorganize them. See below for details. */
 int audin_toddr_copy_user(struct snd_soc_component *component,
 			 struct snd_pcm_substream *substream, int channel,
 			 unsigned long pos, void __user *buf,
@@ -442,8 +445,18 @@ int audin_toddr_copy_user(struct snd_soc_component *component,
 		return -EINVAL;
 	}
 
-	// dump_buffer(ptr, 64, 0);
-
+	/* Data is stored from the FIFO in blocks of 64 bytes per channel.
+	* Therefore, for a 2 channels input, we'll have a memory buffer which
+	* will look like:
+	* 	[64 bytes ch1][64 bytes ch2][64 bytes ch1][64 bytes ch2]...
+	* Working with both 16 bits and 32 bits samples, it means that we will
+	* need two separate functions to properly return the data to the
+	* userspace:
+	* - reorder_buffer_s16() for the 16 bit samples;
+	* - reorder_buffer_s24_s32() for the 24/32 bit samples
+	*	- the 24 bit case assumes that samples are still saved with
+	*	  32 bits.
+	*/
 	switch (runtime->format) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		reorder_buffer_s16(ptr, bytes);
@@ -457,8 +470,6 @@ int audin_toddr_copy_user(struct snd_soc_component *component,
 			"Error: unsupported format %x", runtime->format);
 		return -EINVAL;
 	}
-
-	// dump_buffer(ptr, 32, 0);
 
 	ret = copy_to_user(buf, ptr, bytes);
 	if (ret < 0) {
