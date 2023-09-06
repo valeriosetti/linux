@@ -246,8 +246,6 @@ static irqreturn_t audin_fifo_isr(int irq, void *substream)
 	struct audin_fifo *fifo = dai->capture_dma_data;
 	unsigned int irq_val, old_int_val, new_int_val, start, end;
 
-	snd_pcm_period_elapsed(pcm_substream);
-
 	irq_val = snd_soc_component_read(dai->component, AUDIN_FIFO_INT);
 	if (irq_val & AUDIN_FIFO_INT_FIFO0_OVERFLOW) {
 		dev_warn(dai->dev, "Warning: FIFO overflow\n");
@@ -266,6 +264,8 @@ static irqreturn_t audin_fifo_isr(int irq, void *substream)
 	snd_soc_component_update_bits(dai->component, AUDIN_FIFO_INT,
 								  AUDIN_FIFO_INT_FIFO0_OVERFLOW |
 								  AUDIN_FIFO_INT_FIFO0_ADDR_TRIG, irq_val);
+
+	snd_pcm_period_elapsed(pcm_substream);
 
 	return IRQ_HANDLED;
 }
@@ -338,7 +338,7 @@ void audin_toddr_shutdown(struct snd_pcm_substream *substream,
 	struct audin *audin = audin_from_dai(dai);
 
 	free_irq(audin->irq, substream);
-	// clk_disable_unprepare(audin->pclk);
+	clk_disable_unprepare(audin->pclk);
 }
 
 const struct snd_soc_dai_ops audin_toddr_dai_ops = {

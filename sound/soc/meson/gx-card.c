@@ -97,7 +97,7 @@ static int gx_card_add_link(struct snd_soc_card *card, struct device_node *np,
 
 	if (gx_card_cpu_identify(dai_link->cpus, "FIFO"))
 		return  meson_card_set_fe_link(card, dai_link, np, true);
-	else if (gx_card_cpu_identify(dai_link->cpus, "toDDR"))
+	else if (gx_card_cpu_identify(dai_link->cpus, "TODDR"))
 		return  meson_card_set_fe_link(card, dai_link, np, false);
 
 	ret = meson_card_set_be_link(card, dai_link, np);

@@ -16,7 +16,7 @@
 #include "audin.h"
 
 static const struct snd_soc_dapm_route audin_cpu_dapm_routes[] = {
-	{ "toDDR 0 Capture", NULL, "I2S Decoder Capture" },
+	{ "TODDR 0 Capture", NULL, "I2S Decoder Capture" },
 };
 
 static int audin_cpu_of_xlate_dai_name(struct snd_soc_component *component,
@@ -77,9 +77,9 @@ static const struct snd_soc_component_driver audin_cpu_component = {
 
 static struct snd_soc_dai_driver audin_cpu_dai_drv[] = {
 	[CPU_AUDIN_TODDR_0] = {
-		.name = "toDDR 0",
+		.name = "TODDR 0",
 		.capture = {
-			.stream_name	= "toDDR 0 Capture",
+			.stream_name	= "TODDR 0 Capture",
 			.channels_min	= 1,
 			.channels_max	= 8,
 			.rates		= SNDRV_PCM_RATE_CONTINUOUS,
@@ -93,9 +93,9 @@ static struct snd_soc_dai_driver audin_cpu_dai_drv[] = {
 		.remove		= audin_toddr_dai_remove,
 	},
 	[CPU_AUDIN_TODDR_1] = {
-		.name = "toDDR 1",
+		.name = "TODDR 1",
 		.capture = {
-			.stream_name	= "toDDR 1 Capture",
+			.stream_name	= "TODDR 1 Capture",
 			.channels_min	= 1,
 			.channels_max	= 8,
 			.rates		= SNDRV_PCM_RATE_CONTINUOUS,
@@ -109,9 +109,9 @@ static struct snd_soc_dai_driver audin_cpu_dai_drv[] = {
 		.remove		= audin_toddr_dai_remove,
 	},
 	[CPU_AUDIN_TODDR_2] = {
-		.name = "toDDR 2",
+		.name = "TODDR 2",
 		.capture = {
-			.stream_name	= "toDDR 2 Capture",
+			.stream_name	= "TODDR 2 Capture",
 			.channels_min	= 1,
 			.channels_max	= 8,
 			.rates		= SNDRV_PCM_RATE_CONTINUOUS,
