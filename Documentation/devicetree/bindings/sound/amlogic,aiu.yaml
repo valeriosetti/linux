@@ -35,6 +35,7 @@ properties:
       - description: I2S output clock
       - description: I2S master clock
       - description: I2S mixer clock
+      - description: I2S input clock
       - description: SPDIF peripheral clock
       - description: SPDIF output clock
       - description: SPDIF master clock
@@ -47,6 +48,7 @@ properties:
       - const: i2s_aoclk
       - const: i2s_mclk
       - const: i2s_mixer
+      - const: i2s_input_clk
       - const: spdif_pclk
       - const: spdif_aoclk
       - const: spdif_mclk
@@ -56,14 +58,16 @@ properties:
     items:
       - description: I2S interrupt line
       - description: SPDIF interrupt line
+      - description: Audin interrupt line
 
   interrupt-names:
     items:
       - const: i2s
       - const: spdif
+      - const: audin
 
   reg:
-    maxItems: 1
+    maxItems: 2
 
   resets:
     maxItems: 1

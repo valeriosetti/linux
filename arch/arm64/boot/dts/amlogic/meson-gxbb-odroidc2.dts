@@ -210,6 +210,10 @@
 				sound-dai = <&hdmi_tx>;
 			};
 		};
+
+		dai-link-3 {
+			sound-dai = <&aiu AIU_CPU CPU_AUDIN_TODDR_0>;
+		};
 	};
 
 	spi-gpio {

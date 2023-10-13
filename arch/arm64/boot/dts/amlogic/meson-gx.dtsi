@@ -297,10 +297,13 @@
 				compatible = "amlogic,aiu";
 				#sound-dai-cells = <2>;
 				sound-name-prefix = "AIU";
-				reg = <0x0 0x5400 0x0 0x2ac>;
+				reg = <0x0 0x5400 0x0 0x2ac>,
+					<0x0 0xa000 0x0 0x308>;
+				reg-names = "aiu", "audin";
 				interrupts = <GIC_SPI 48 IRQ_TYPE_EDGE_RISING>,
-					     <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
-				interrupt-names = "i2s", "spdif";
+					     <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>,
+					     <GIC_SPI 7 IRQ_TYPE_EDGE_RISING>;
+				interrupt-names = "i2s", "spdif", "audin";
 				status = "disabled";
 			};
 
