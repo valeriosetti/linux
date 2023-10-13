@@ -195,17 +195,12 @@
 			mclk-fs = <256>;
 
 			codec-0 {
-				//sound-dai = <&aiu AIU_HDMI CTRL_I2S>;
 				sound-dai = <&sgtl5000>;
 			};
 		};
 
 		dai-link-2 {
-			sound-dai = <&aiu AIU_HDMI CTRL_OUT>;
-
-			codec-0 {
-				sound-dai = <&hdmi_tx>;
-			};
+			sound-dai = <&aiu AIU_CPU CPU_AUDIN_TODDR_0>;
 		};
 	};
 
@@ -300,7 +295,11 @@
 		assigned-clocks = <&clkc CLKID_CTS_AMCLK>;
 		assigned-clock-rates = <12288000>;
 
-		// Configure I2S pins
+		/* Configure I2S pins
+		 * I2S IN is not configured because it's the default configuration so
+		 * as long as "pwm_ao_a_6_pins" or "spdif_out_ao_6_pins" are not used,
+		 * then this is fine.
+		 */
 		pinctrl-0 = <&i2s_am_clk_pins
 					&i2s_out_ao_clk_pins
 					&i2s_out_lr_clk_pins

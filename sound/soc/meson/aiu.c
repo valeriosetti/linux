@@ -29,16 +29,53 @@ static SOC_ENUM_SINGLE_DECL(aiu_spdif_encode_sel_enum, AIU_I2S_MISC,
 static const struct snd_kcontrol_new aiu_spdif_encode_mux =
 	SOC_DAPM_ENUM("SPDIF Buffer Src", aiu_spdif_encode_sel_enum);
 
+static const char * const audin_fifo_input_sel_texts[] = {
+	"SPDIF", "I2S", "PCM", "HDMI", "Demodulator"
+};
+
+static SOC_ENUM_SINGLE_DECL(audin_fifo0_input_sel_enum, AUDIN_FIFO0_CTRL,
+			    AUDIN_FIFO_CTRL_DIN_SEL_OFF,
+			    audin_fifo_input_sel_texts);
+
+static const struct snd_kcontrol_new audin_fifo0_input_sel_mux =
+	SOC_DAPM_ENUM("FIFO0 SRC SEL", audin_fifo0_input_sel_enum);
+
+static SOC_ENUM_SINGLE_DECL(audin_fifo1_input_sel_enum, AUDIN_FIFO1_CTRL,
+			    AUDIN_FIFO_CTRL_DIN_SEL_OFF,
+			    audin_fifo_input_sel_texts);
+
+static const struct snd_kcontrol_new audin_fifo1_input_sel_mux =
+	SOC_DAPM_ENUM("FIFO1 SRC SEL", audin_fifo1_input_sel_enum);
+
+static SOC_ENUM_SINGLE_DECL(audin_fifo2_input_sel_enum, AUDIN_FIFO2_CTRL,
+			    AUDIN_FIFO_CTRL_DIN_SEL_OFF,
+			    audin_fifo_input_sel_texts);
+
+static const struct snd_kcontrol_new audin_fifo2_input_sel_mux =
+	SOC_DAPM_ENUM("FIFO2 SRC SEL", audin_fifo2_input_sel_enum);
+
 static const struct snd_soc_dapm_widget aiu_cpu_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("SPDIF SRC SEL", SND_SOC_NOPM, 0, 0,
 			 &aiu_spdif_encode_mux),
+	SND_SOC_DAPM_MUX("AUDIN FIFO0 SRC SEL", SND_SOC_NOPM, 0, 0,
+			 &audin_fifo0_input_sel_mux),
+	SND_SOC_DAPM_MUX("AUDIN FIFO1 SRC SEL", SND_SOC_NOPM, 0, 0,
+			 &audin_fifo1_input_sel_mux),
+	SND_SOC_DAPM_MUX("AUDIN FIFO2 SRC SEL", SND_SOC_NOPM, 0, 0,
+			 &audin_fifo2_input_sel_mux),
 };
 
 static const struct snd_soc_dapm_route aiu_cpu_dapm_routes[] = {
-	{ "I2S Encoder Playback", NULL, "I2S FIFO Playback" },
+	{ "I2S Codec Playback", NULL, "I2S FIFO Playback" },
 	{ "SPDIF SRC SEL", "SPDIF", "SPDIF FIFO Playback" },
 	{ "SPDIF SRC SEL", "I2S", "I2S FIFO Playback" },
 	{ "SPDIF Encoder Playback", NULL, "SPDIF SRC SEL" },
+	{ "AUDIN FIFO0 SRC SEL", "I2S", "I2S Codec Capture" },
+	{ "AUDIN FIFO1 SRC SEL", "I2S", "I2S Codec Capture" },
+	{ "AUDIN FIFO2 SRC SEL", "I2S", "I2S Codec Capture" },
+	{ "TODDR 0 Capture", NULL, "AUDIN FIFO0 SRC SEL" },
+	{ "TODDR 1 Capture", NULL, "AUDIN FIFO1 SRC SEL" },
+	{ "TODDR 2 Capture", NULL, "AUDIN FIFO2 SRC SEL" },
 };
 
 int aiu_of_xlate_dai_name(struct snd_soc_component *component,
@@ -93,6 +130,55 @@ static void aiu_cpu_component_remove(struct snd_soc_component *component)
 	clk_disable_unprepare(aiu->i2s.clks[PCLK].clk);
 }
 
+static unsigned int aiu_cpu_component_read(struct snd_soc_component *component,
+			unsigned int reg)
+{
+	struct aiu *aiu = dev_get_drvdata(component->dev);
+	struct regmap *selected_regmap;
+	unsigned int val;
+	int ret;
+
+	if (reg >= AUDIN_REGS_OFFSET) {
+		selected_regmap = aiu->audin_regmap;
+		reg -= AUDIN_REGS_OFFSET;
+	} else {
+		selected_regmap = aiu->aiu_regmap;
+	}
+
+	ret = regmap_read(selected_regmap, reg, &val);
+	if (ret != 0) {
+		return ret;
+	}
+
+	return val;
+}
+
+static int aiu_cpu_component_write(struct snd_soc_component *component,
+					unsigned int reg, unsigned int val)
+{
+	struct aiu *aiu = dev_get_drvdata(component->dev);
+	struct regmap *selected_regmap;
+
+	if (reg >= AUDIN_REGS_OFFSET) {
+		selected_regmap = aiu->audin_regmap;
+		reg -= AUDIN_REGS_OFFSET;
+	} else {
+		selected_regmap = aiu->aiu_regmap;
+	}
+
+	return regmap_write(selected_regmap, reg, val);
+}
+
+static snd_pcm_uframes_t aiu_cpu_pointer(struct snd_soc_component *component,
+					  struct snd_pcm_substream *substream)
+{
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		return aiu_fifo_pointer(component, substream);
+	} else {
+		return audin_toddr_pointer(component, substream);
+	}
+}
+
 static const struct snd_soc_component_driver aiu_cpu_component = {
 	.name			= "AIU CPU",
 	.dapm_widgets		= aiu_cpu_dapm_widgets,
@@ -100,9 +186,11 @@ static const struct snd_soc_component_driver aiu_cpu_component = {
 	.dapm_routes		= aiu_cpu_dapm_routes,
 	.num_dapm_routes	= ARRAY_SIZE(aiu_cpu_dapm_routes),
 	.of_xlate_dai_name	= aiu_cpu_of_xlate_dai_name,
-	.pointer		= aiu_fifo_pointer,
+	.pointer		= aiu_cpu_pointer,
 	.probe			= aiu_cpu_component_probe,
 	.remove			= aiu_cpu_component_remove,
+	.read			= aiu_cpu_component_read,
+	.write			= aiu_cpu_component_write,
 #ifdef CONFIG_DEBUG_FS
 	.debugfs_prefix		= "cpu",
 #endif
@@ -135,14 +223,69 @@ static struct snd_soc_dai_driver aiu_cpu_dai_drv[] = {
 		},
 		.ops		= &aiu_fifo_spdif_dai_ops,
 	},
+	[CPU_AUDIN_TODDR_0] = {
+		.name = "TODDR 0",
+		.capture = {
+			.stream_name	= "TODDR 0 Capture",
+			.channels_min	= 1,
+			.channels_max	= 8,
+			.rates		= SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_min	= 5512,
+			.rate_max	= 192000,
+			.formats	= AUDIN_FORMATS,
+		},
+		.ops		= &audin_toddr_dai_ops,
+		.pcm_new	= audin_toddr_pcm_new,
+		.probe		= audin_toddr_dai_probe,
+		.remove		= audin_toddr_dai_remove,
+	},
+	[CPU_AUDIN_TODDR_1] = {
+		.name = "TODDR 1",
+		.capture = {
+			.stream_name	= "TODDR 1 Capture",
+			.channels_min	= 1,
+			.channels_max	= 8,
+			.rates		= SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_min	= 5512,
+			.rate_max	= 192000,
+			.formats	= AUDIN_FORMATS,
+		},
+		.ops		= &audin_toddr_dai_ops,
+		.pcm_new	= audin_toddr_pcm_new,
+		.probe		= audin_toddr_dai_probe,
+		.remove		= audin_toddr_dai_remove,
+	},
+	[CPU_AUDIN_TODDR_2] = {
+		.name = "TODDR 2",
+		.capture = {
+			.stream_name	= "TODDR 2 Capture",
+			.channels_min	= 1,
+			.channels_max	= 8,
+			.rates		= SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_min	= 5512,
+			.rate_max	= 192000,
+			.formats	= AUDIN_FORMATS,
+		},
+		.ops		= &audin_toddr_dai_ops,
+		.pcm_new	= audin_toddr_pcm_new,
+		.probe		= audin_toddr_dai_probe,
+		.remove		= audin_toddr_dai_remove,
+	},
 	[CPU_I2S_ENCODER] = {
-		.name = "I2S Encoder",
+		.name = "I2S Codec",
 		.playback = {
-			.stream_name = "I2S Encoder Playback",
+			.stream_name = "I2S Codec Playback",
 			.channels_min = 2,
 			.channels_max = 8,
 			.rates = SNDRV_PCM_RATE_8000_192000,
 			.formats = AIU_FORMATS,
+		},
+		.capture = {
+			.stream_name = "I2S Codec Capture",
+			.channels_min = 2,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_8000_192000,
+			.formats = AUDIN_FORMATS,
 		},
 		.ops = &aiu_encoder_i2s_dai_ops,
 	},
@@ -170,6 +313,13 @@ static const struct regmap_config aiu_regmap_cfg = {
 	.val_bits	= 32,
 	.reg_stride	= 4,
 	.max_register	= 0x2ac,
+};
+
+static const struct regmap_config audin_regmap_cfg = {
+	.reg_bits	= 32,
+	.val_bits	= 32,
+	.reg_stride	= 4,
+	.max_register	= 0x308,
 };
 
 static int aiu_clk_bulk_get(struct device *dev,
@@ -201,6 +351,7 @@ static const char * const aiu_i2s_ids[] = {
 	[AOCLK]	= "i2s_aoclk",
 	[MCLK]	= "i2s_mclk",
 	[MIXER]	= "i2s_mixer",
+	[AUDIN]	= "i2s_input_clk",
 };
 
 static const char * const aiu_spdif_ids[] = {
@@ -241,7 +392,6 @@ static int aiu_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	void __iomem *regs;
-	struct regmap *map;
 	struct aiu *aiu;
 	int ret;
 
@@ -259,20 +409,35 @@ static int aiu_probe(struct platform_device *pdev)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to reset device\n");
 
-	regs = devm_platform_ioremap_resource(pdev, 0);
+	regs = devm_platform_ioremap_resource_byname(pdev, "aiu");
 	if (IS_ERR(regs))
 		return PTR_ERR(regs);
 
-	map = devm_regmap_init_mmio(dev, regs, &aiu_regmap_cfg);
-	if (IS_ERR(map)) {
-		dev_err(dev, "failed to init regmap: %ld\n",
-			PTR_ERR(map));
-		return PTR_ERR(map);
+	aiu->aiu_regmap = devm_regmap_init_mmio(dev, regs, &aiu_regmap_cfg);
+	if (IS_ERR(aiu->aiu_regmap)) {
+		dev_err(dev, "failed to init aiu regmap: %ld\n",
+			PTR_ERR(aiu->aiu_regmap));
+		return PTR_ERR(aiu->aiu_regmap);
+	}
+
+	regs = devm_platform_ioremap_resource_byname(pdev, "audin");
+	if (IS_ERR(regs))
+		return PTR_ERR(regs);
+
+	aiu->audin_regmap = devm_regmap_init_mmio(dev, regs, &audin_regmap_cfg);
+	if (IS_ERR(aiu->audin_regmap)) {
+		dev_err(dev, "failed to init audin regmap: %ld\n",
+			PTR_ERR(aiu->audin_regmap));
+		return PTR_ERR(aiu->audin_regmap);
 	}
 
 	aiu->i2s.irq = platform_get_irq_byname(pdev, "i2s");
 	if (aiu->i2s.irq < 0)
 		return aiu->i2s.irq;
+
+	aiu->i2s.audin_irq = platform_get_irq_byname(pdev, "audin");
+	if (aiu->i2s.audin_irq < 0)
+		return aiu->i2s.audin_irq;
 
 	aiu->spdif.irq = platform_get_irq_byname(pdev, "spdif");
 	if (aiu->spdif.irq < 0)

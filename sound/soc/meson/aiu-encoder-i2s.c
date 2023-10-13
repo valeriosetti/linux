@@ -184,6 +184,52 @@ static int aiu_encoder_i2s_set_clocks(struct snd_soc_component *component,
 	return 0;
 }
 
+static int audin_decoder_i2s_hw_params(struct snd_pcm_substream *substream,
+				       struct snd_pcm_hw_params *params,
+				       struct snd_soc_dai *dai)
+{
+	struct snd_soc_component *component = dai->component;
+	int val;
+
+
+	/* I2S decoder always outputs 24bits to the FIFO according to the
+	 * manual. The only thing we can do is mask some bits as follows:
+	 * - 0: 16 bit
+	 * - 1: 18 bits (not exposed as supported format)
+	 * - 2: 20 bits (not exposed as supported format)
+	 * - 3: 24 bits
+	 *
+	 * We force 24 bit output here and filter unnecessary ones at the FIFO
+	 * stage.*/
+	switch (params_physical_width(params)) {
+		case 16:
+		case 24:
+		case 32:
+			val = 3;
+			break;
+		default:
+			dev_err(dai->dev, "Error: wrong sample width %d",
+				params_physical_width(params));
+			return -EINVAL;
+	}
+	val = FIELD_PREP(AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK, val);
+	snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL,
+				      AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK, val);
+
+	/* This SOC only has 1 pin for I2S input, so it cannot support more
+	 * than 2 channels. Therefore we enforce and hardcode this value. */
+	if (params_channels(params) != 2) {
+		dev_warn(dai->dev, "Warning: unsupported channel number %d",
+			params_channels(params));
+		return -EINVAL;
+	}
+	val = FIELD_PREP(AUDIN_I2SIN_CTRL_I2SIN_CHAN_EN_MASK, 1);
+	snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL,
+				      AUDIN_I2SIN_CTRL_I2SIN_CHAN_EN_MASK, val);
+
+	return 0;
+}
+
 static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 				     struct snd_pcm_hw_params *params,
 				     struct snd_soc_dai *dai)
@@ -208,6 +254,13 @@ static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	aiu_encoder_i2s_divider_enable(component, true);
 
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		ret = audin_decoder_i2s_hw_params(substream, params, dai);
+		if (ret) {
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -218,6 +271,42 @@ static int aiu_encoder_i2s_hw_free(struct snd_pcm_substream *substream,
 
 	aiu_encoder_i2s_divider_enable(component, false);
 
+	return 0;
+}
+
+static int audin_decoder_i2s_set_fmt_input(struct snd_soc_dai *dai, unsigned int fmt)
+{
+	struct snd_soc_component *component = dai->component;
+	unsigned int val = 0;
+
+	/* Use clocks from AIU and not from the pads since we only want to
+	 * support master mode. */
+	val = AUDIN_I2SIN_CTRL_I2SIN_CLK_SEL |
+	      AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SEL |
+	      AUDIN_I2SIN_CTRL_I2SIN_DIR;
+	snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL, val, val);
+
+	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
+	case SND_SOC_DAIFMT_IB_NF:
+		val = AUDIN_I2SIN_CTRL_I2SIN_POS_SYNC;
+		break;
+	case SND_SOC_DAIFMT_NB_NF:
+		val = 0;
+		break;
+	default:
+		dev_err(dai->dev, "Error: unsupported format %x", fmt);
+		return -EINVAL;
+	}
+	snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL,
+				      AUDIN_I2SIN_CTRL_I2SIN_POS_SYNC, val);
+
+	/* Manufacturer's driver set these harcoded values for I2S case*/
+	val = FIELD_PREP(AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SKEW_MASK, 1);
+	snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL,
+				      AUDIN_I2SIN_CTRL_I2SIN_LRCLK_INV |
+				      AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SKEW_MASK,
+				      val);
+	
 	return 0;
 }
 
@@ -268,6 +357,36 @@ static int aiu_encoder_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 				      AIU_CLK_CTRL_LRCLK_SKEW,
 				      val);
 
+	return audin_decoder_i2s_set_fmt_input(dai, fmt);
+}
+
+static int aiu_encoder_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
+				struct snd_soc_dai *dai)
+{
+	struct snd_soc_component *component = dai->component;
+
+	/* Nothing to do for the playback mode */
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		return 0;
+	}
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL,
+					      AUDIN_I2SIN_CTRL_I2SIN_EN,
+					      AUDIN_I2SIN_CTRL_I2SIN_EN);
+		break;
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+	case SNDRV_PCM_TRIGGER_STOP:
+		snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL,
+					      AUDIN_I2SIN_CTRL_I2SIN_EN, 0);
+		break;
+	default:
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -334,5 +453,6 @@ const struct snd_soc_dai_ops aiu_encoder_i2s_dai_ops = {
 	.set_sysclk	= aiu_encoder_i2s_set_sysclk,
 	.startup	= aiu_encoder_i2s_startup,
 	.shutdown	= aiu_encoder_i2s_shutdown,
+	.trigger	= aiu_encoder_i2s_trigger,
 };
 

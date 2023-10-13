@@ -10,6 +10,9 @@
 #define CPU_SPDIF_FIFO		1
 #define CPU_I2S_ENCODER		2
 #define CPU_SPDIF_ENCODER	3
+#define CPU_AUDIN_TODDR_0	4
+#define CPU_AUDIN_TODDR_1	5
+#define CPU_AUDIN_TODDR_2	6
 
 #define CTRL_I2S		0
 #define CTRL_PCM		1
