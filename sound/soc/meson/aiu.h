@@ -173,7 +173,6 @@ extern const struct snd_soc_dai_ops audin_toddr_dai_ops;
 extern const struct snd_soc_dai_ops audin_i2s_decoder_dai_ops;
 extern struct device_attribute dev_attr_dump_regs;
 
-int audin_create_debugfs(struct snd_soc_component *component);
 int audin_toddr_dai_probe(struct snd_soc_dai *dai);
 int audin_toddr_dai_remove(struct snd_soc_dai *dai);
 int audin_toddr_pcm_new(struct snd_soc_pcm_runtime *rtd,

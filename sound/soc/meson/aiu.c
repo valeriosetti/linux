@@ -146,9 +146,8 @@ static unsigned int aiu_cpu_component_read(struct snd_soc_component *component,
 	}
 
 	ret = regmap_read(selected_regmap, reg, &val);
-	if (ret != 0) {
+	if (ret != 0)
 		return ret;
-	}
 
 	return val;
 }
@@ -172,11 +171,10 @@ static int aiu_cpu_component_write(struct snd_soc_component *component,
 static snd_pcm_uframes_t aiu_cpu_pointer(struct snd_soc_component *component,
 					  struct snd_pcm_substream *substream)
 {
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		return aiu_fifo_pointer(component, substream);
-	} else {
+	else
 		return audin_toddr_pointer(component, substream);
-	}
 }
 
 static const struct snd_soc_component_driver aiu_cpu_component = {

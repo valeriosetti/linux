@@ -200,24 +200,26 @@ static int audin_decoder_i2s_hw_params(struct snd_pcm_substream *substream,
 	 * - 3: 24 bits
 	 *
 	 * We force 24 bit output here and filter unnecessary ones at the FIFO
-	 * stage.*/
+	 * stage.
+	 */
 	switch (params_physical_width(params)) {
-		case 16:
-		case 24:
-		case 32:
-			val = 3;
-			break;
-		default:
-			dev_err(dai->dev, "Error: wrong sample width %d",
-				params_physical_width(params));
-			return -EINVAL;
+	case 16:
+	case 24:
+	case 32:
+		val = 3;
+		break;
+	default:
+		dev_err(dai->dev, "Error: wrong sample width %d",
+			params_physical_width(params));
+		return -EINVAL;
 	}
 	val = FIELD_PREP(AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK, val);
 	snd_soc_component_update_bits(component, AUDIN_I2SIN_CTRL,
 				      AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK, val);
 
 	/* This SOC only has 1 pin for I2S input, so it cannot support more
-	 * than 2 channels. Therefore we enforce and hardcode this value. */
+	 * than 2 channels. Therefore we enforce and hardcode this value.
+	 */
 	if (params_channels(params) != 2) {
 		dev_warn(dai->dev, "Warning: unsupported channel number %d",
 			params_channels(params));
@@ -256,9 +258,8 @@ static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		ret = audin_decoder_i2s_hw_params(substream, params, dai);
-		if (ret) {
+		if (ret)
 			return ret;
-		}
 	}
 
 	return 0;
@@ -280,7 +281,8 @@ static int audin_decoder_i2s_set_fmt_input(struct snd_soc_dai *dai, unsigned int
 	unsigned int val = 0;
 
 	/* Use clocks from AIU and not from the pads since we only want to
-	 * support master mode. */
+	 * support master mode.
+	 */
 	val = AUDIN_I2SIN_CTRL_I2SIN_CLK_SEL |
 	      AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SEL |
 	      AUDIN_I2SIN_CTRL_I2SIN_DIR;
@@ -306,7 +308,7 @@ static int audin_decoder_i2s_set_fmt_input(struct snd_soc_dai *dai, unsigned int
 				      AUDIN_I2SIN_CTRL_I2SIN_LRCLK_INV |
 				      AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SKEW_MASK,
 				      val);
-	
+
 	return 0;
 }
 
@@ -366,9 +368,8 @@ static int aiu_encoder_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 	struct snd_soc_component *component = dai->component;
 
 	/* Nothing to do for the playback mode */
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		return 0;
-	}
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:

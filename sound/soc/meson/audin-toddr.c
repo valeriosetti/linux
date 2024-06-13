@@ -90,7 +90,8 @@ struct fifo_regs_bit_masks auding_fifo_regs_bit_masks[AUDIN_FIFO_COUNT] = {
 
 /* This value is connected to the interrupt's periodicity: an IRQ will be
  * generated when the input buffer has been written to multiple of this
- * value. */
+ * value.
+ */
 #define AUDIN_FIFO_I2S_BLOCK		4096
 
 static struct snd_pcm_hardware toddr_pcm_hw = {
@@ -188,41 +189,47 @@ static int audin_toddr_hw_params(struct snd_pcm_substream *substream,
 	 * to an hardcoded 4, which however does not work for 16 bit mode.
 	 * Therefore through several attempts I found these working configurations:
 	 * - 16 bit mode:
-	 * 		- DIN_POS = 1
-	 * 		- ENDIAN = 6
+	 *     - DIN_POS = 1
+	 *     - ENDIAN = 6
 	 * - 32 bit
-	 * 		- DIN_POS = 0
-	 * 		- ENDIAN = 4 */
+	 *     - DIN_POS = 0
+	 *     - ENDIAN = 4
+	 */
 
 	switch (params_physical_width(params)) {
 	case 16:
 		val = FIELD_PREP(AUDIN_FIFO_CTRL_ENDIAN_MASK, 6);
 		snd_soc_component_update_bits(component, fifo->reg->ctrl,
-									  AUDIN_FIFO_CTRL_ENDIAN_MASK, val);
+					      AUDIN_FIFO_CTRL_ENDIAN_MASK, val);
 
 		val = FIELD_PREP(AUDIN_FIFO_CTRL1_DIN_POS_01_MASK, 1);
 		snd_soc_component_update_bits(component, fifo->reg->ctrl1,
-									  AUDIN_FIFO_CTRL1_DIN_POS_01_MASK, val);
+					      AUDIN_FIFO_CTRL1_DIN_POS_01_MASK,
+					      val);
 
 		/* Set sample size to 2 bytes (16 bit) */
 		val = FIELD_PREP(AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK, 1);
 		snd_soc_component_update_bits(component, fifo->reg->ctrl1,
-				      				  AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK, val);
+					      AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK,
+					      val);
 		break;
 	case 24:
 	case 32:
 		val = FIELD_PREP(AUDIN_FIFO_CTRL_ENDIAN_MASK, 4);
 		snd_soc_component_update_bits(component, fifo->reg->ctrl,
-									  AUDIN_FIFO_CTRL_ENDIAN_MASK, val);
+					      AUDIN_FIFO_CTRL_ENDIAN_MASK,
+					      val);
 
 		val = FIELD_PREP(AUDIN_FIFO_CTRL1_DIN_POS_01_MASK, 0);
 		snd_soc_component_update_bits(component, fifo->reg->ctrl1,
-									  AUDIN_FIFO_CTRL1_DIN_POS_01_MASK, val);
+					      AUDIN_FIFO_CTRL1_DIN_POS_01_MASK,
+					      val);
 
 		/* Set sample size to 3 bytes (24 bit) */
 		val = FIELD_PREP(AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK, 2);
 		snd_soc_component_update_bits(component, fifo->reg->ctrl1,
-				      				  AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK, val);
+					      AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK,
+					      val);
 		break;
 	default:
 		dev_err(dai->dev, "Unsupported physical width %u\n",
@@ -231,7 +238,8 @@ static int audin_toddr_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* Set channel count. Since the platform has a single pin for I2S input
-	 * it can only support 2 channels, so we hardcode this value. */
+	 * it can only support 2 channels, so we hardcode this value.
+	 */
 	val = FIELD_PREP(AUDIN_FIFO_CTRL_CHAN_MASK, 2);
 	snd_soc_component_update_bits(component, fifo->reg->ctrl,
 				      AUDIN_FIFO_CTRL_CHAN_MASK, val);
@@ -248,9 +256,8 @@ static irqreturn_t audin_fifo_isr(int irq, void *substream)
 	unsigned int irq_val, old_int_val, new_int_val, start, end;
 
 	irq_val = snd_soc_component_read(dai->component, AUDIN_FIFO_INT);
-	if (irq_val & AUDIN_FIFO_INT_FIFO0_OVERFLOW) {
+	if (irq_val & AUDIN_FIFO_INT_FIFO0_OVERFLOW)
 		dev_warn(dai->dev, "Warning: FIFO overflow\n");
-	}
 
 	/* Set IRQ for the next block (wrap when necessary)*/
 	start = snd_soc_component_read(dai->component, fifo->reg->start);
@@ -262,9 +269,10 @@ static irqreturn_t audin_fifo_isr(int irq, void *substream)
 	snd_soc_component_write(dai->component, fifo->reg->intr, new_int_val);
 
 	/* Clear IRQ flag(s) by writing 1 on the bits which are set */
-	snd_soc_component_update_bits(dai->component, AUDIN_FIFO_INT,
-								  AUDIN_FIFO_INT_FIFO0_OVERFLOW |
-								  AUDIN_FIFO_INT_FIFO0_ADDR_TRIG, irq_val);
+	snd_soc_component_update_bits(dai->component,
+				      AUDIN_FIFO_INT,
+				      AUDIN_FIFO_INT_FIFO0_OVERFLOW |
+				      AUDIN_FIFO_INT_FIFO0_ADDR_TRIG, irq_val);
 
 	snd_pcm_period_elapsed(pcm_substream);
 
@@ -272,7 +280,7 @@ static irqreturn_t audin_fifo_isr(int irq, void *substream)
 }
 
 int audin_toddr_startup(struct snd_pcm_substream *substream,
-		 	struct snd_soc_dai *dai)
+			struct snd_soc_dai *dai)
 {
 	struct audin_fifo *fifo = dai->capture_dma_data;
 	struct snd_soc_component *component = dai->component;
@@ -309,7 +317,7 @@ int audin_toddr_startup(struct snd_pcm_substream *substream,
 		clk_disable_unprepare(aiu->pclk);
 		return ret;
 	}
-	
+
 	/* Unmask FIFO IRQ bits */
 	val = AUDIN_INT_CTRL_FIFO0_OVERFLOW | AUDIN_INT_CTRL_FIFO0_ADDR_TRIG;
 	snd_soc_component_update_bits(dai->component, AUDIN_INT_CTRL, val, 0);
@@ -318,7 +326,7 @@ int audin_toddr_startup(struct snd_pcm_substream *substream,
 }
 
 void audin_toddr_shutdown(struct snd_pcm_substream *substream,
-				struct snd_soc_dai *dai)
+			  struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
 	struct aiu *aiu = snd_soc_component_get_drvdata(component);
@@ -361,9 +369,8 @@ static __maybe_unused void dump_buffer(uint8_t *buf, unsigned int len, int size)
 	int16_t s16_val;
 
 	for (i = 0; i < len; i++) {
-		if (i % 16 == 0) {
+		if (i % 16 == 0)
 			out_ptr += sprintf(out_ptr, "\n");
-		}
 		if (size == 0) { // Raw
 			out_ptr += sprintf(out_ptr, "%02x ", buf[i]);
 		} else if (size == 16) {
@@ -415,35 +422,36 @@ static void reorder_buffer_s24_s32(unsigned char *buf, unsigned long len)
 
 /* The copy_user function is required because the FIFO do not save samples
  * in memory in the proper way that is usable from userspace, so we have to
- * reorganize them. See below for details. */
-static int audin_toddr_copy_user(struct snd_pcm_substream *substream, int channel,
-			 unsigned long pos, void __user *buf,
-			 unsigned long bytes)
+ * reorganize them. See below for details.
+ */
+static int audin_toddr_copy_user(struct snd_pcm_substream *substream,
+				 int channel, unsigned long pos,
+				 void __user *buf, unsigned long bytes)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	
+
 	unsigned char *ptr = runtime->dma_area + pos;
 	int ret;
 
 	/* Buffer must be multiple of 64 bytes*/
 	if (bytes % 64) {
-		// dev_err(component->dev,
-		// 	"Error: buffer size (%lx) is not multiple of 64", bytes);
+		dev_err(&substream->pstr->dev,
+			"Error: buffer size (%lx) is not multiple of 64", bytes);
 		return -EINVAL;
 	}
 
 	/* Data is stored from the FIFO in blocks of 64 bytes per channel.
-	* Therefore, for a 2 channels input, we'll have a memory buffer which
-	* will look like:
-	* 	[64 bytes ch1][64 bytes ch2][64 bytes ch1][64 bytes ch2]...
-	* Working with both 16 bits and 32 bits samples, it means that we will
-	* need two separate functions to properly return the data to the
-	* userspace:
-	* - reorder_buffer_s16() for the 16 bit samples;
-	* - reorder_buffer_s24_s32() for the 24/32 bit samples
-	*	- the 24 bit case assumes that samples are still saved with
-	*	  32 bits.
-	*/
+	 * Therefore, for a 2 channels input, we'll have a memory buffer which
+	 * will look like:
+	 *     [64 bytes ch1][64 bytes ch2][64 bytes ch1][64 bytes ch2]...
+	 * Working with both 16 bits and 32 bits samples, it means that we will
+	 * need two separate functions to properly return the data to the
+	 * userspace:
+	 * - reorder_buffer_s16() for the 16 bit samples;
+	 * - reorder_buffer_s24_s32() for the 24/32 bit samples
+	 *    - the 24 bit case assumes that samples are still saved with 32
+	 *      bits.
+	 */
 	switch (runtime->format) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		reorder_buffer_s16(ptr, bytes);
@@ -453,15 +461,14 @@ static int audin_toddr_copy_user(struct snd_pcm_substream *substream, int channe
 		reorder_buffer_s24_s32(ptr, bytes);
 		break;
 	default:
-		// dev_err(component->dev,
-		// 	"Error: unsupported format %x", runtime->format);
+		dev_err(&substream->pstr->dev,
+			"Error: unsupported format %x", runtime->format);
 		return -EINVAL;
 	}
 
 	ret = copy_to_user(buf, ptr, bytes);
-	if (ret < 0) {
+	if (ret < 0)
 		return ret;
-	}
 
 	return bytes;
 }
