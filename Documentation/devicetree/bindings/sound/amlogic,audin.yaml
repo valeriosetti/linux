@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: GPL-2.0
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/sound/amlogic,audin.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Amlogic AUDIN audio output controller
+
+maintainers:
+	- Valerio Setti <vsetti@baylibre.com>
+
+allOf:
+	- $ref: dai-common.yaml#
+
+properties:
+	$nodename:
+		pattern: "^audio-input-controller@.*"
+
+	"#sound-dai-cells":
+		const: 1
+
+	compatible:
+		items:
+			- enum:
+					- amlogic,audin-gxbb
+			- const: amlogic,audin
+
+	clocks:
+		items:
+			- description: AIU peripheral clock
+			- description: I2S peripheral clock
+			- description: I2S output clock
+			- description: I2S master clock
+			- description: I2S mixer clock
+			- description: Bit clock gate
+			- description: Bit clock divider
+
+	clock-names:
+		items:
+			- const: pclk
+			- const: i2s_pclk
+			- const: i2s_aoclk
+			- const: i2s_mclk
+			- const: i2s_mixer
+			- const: i2s_bclk_gate
+			- const: i2s_bclk_div
+
+	interrupts:
+		items:
+			- description: Audin FIFO interrupt line
+
+	interrupt-names:
+		items:
+			- const: audin
+
+	reg:
+		maxItems: 1
+
+	resets:
+		maxItems: 1
+
+	sound-name-prefix: true
+
+required:
+	- "#sound-dai-cells"
+	- compatible
+	- clocks
+	- clock-names
+	- interrupts
+	- interrupt-names
+	- reg
+	- resets
+
+additionalProperties: false
+
+examples:
+	- |
+		#include <dt-bindings/clock/gxbb-clkc.h>
+		#include <dt-bindings/interrupt-controller/irq.h>
+		#include <dt-bindings/interrupt-controller/arm-gic.h>
+		#include <dt-bindings/reset/amlogic,meson-gxbb-reset.h>
+
+		audin: audio-input-controller@a000 {
+			compatible = "amlogic,audin-gxbb", "amlogic,aiu";
+			#sound-dai-cells = <1>;
+			reg = <0x0 0xa000 0x0 0x308>;
+			interrupts = <GIC_SPI 7 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "audin";
+			status = "disabled";
+			clocks = <&clkc CLKID_AIU_GLUE>,
+								<&clkc CLKID_I2S_OUT>,
+								<&clkc CLKID_AOCLK_GATE>,
+								<&clkc CLKID_CTS_AMCLK>,
+								<&clkc CLKID_MIXER_IFACE>,
+								<&aiu AIU_BCLK_GATE>,
+								<&aiu AIU_BCLK_DIV>;
+			clock-names = "pclk",
+										"i2s_pclk",
+										"i2s_aoclk",
+										"i2s_mclk",
+										"i2s_mixer",
+										"i2s_bclk_gate",
+										"i2s_bclk_div";
+			resets = <&reset RESET_AIU>;
+		};

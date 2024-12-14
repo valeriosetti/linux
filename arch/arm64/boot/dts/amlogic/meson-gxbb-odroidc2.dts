@@ -10,6 +10,7 @@
 #include "meson-gxbb.dtsi"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/sound/meson-aiu.h>
+#include <dt-bindings/sound/meson-audin.h>
 
 / {
 	compatible = "hardkernel,odroid-c2", "amlogic,meson-gxbb";
@@ -210,6 +211,20 @@
 				sound-dai = <&hdmi_tx>;
 			};
 		};
+
+		dai-link-3 {
+			sound-dai = <&audin CPU_AUDIN_TODDR_0>;
+		};
+
+		dai-link-4 {
+			sound-dai = <&audin CPU_I2S_DECODER>;
+			dai-format = "i2s";
+			mclk-fs = <256>;
+
+			codec-0 {
+				sound-dai = <&sgtl5000>;
+			};
+		};
 	};
 
 	spi-gpio {
@@ -230,6 +245,10 @@
 };
 
 &aiu {
+	status = "okay";
+};
+
+&audin {
 	status = "okay";
 };
 
