@@ -189,6 +189,12 @@
 				       <270950400>,
 				       <393216000>;
 
+		audio-aux-devs = <&audin_frmt>;
+		audio-routing = "AUDIN FRMT IN", "AIU I2S Encoder Capture",
+				"TODDR0 Capture", "AUDIN FRMT OUT",
+				"TODDR1 Capture", "AUDIN FRMT OUT",
+				"TODDR2 Capture", "AUDIN FRMT OUT";
+
 		dai-link-0 {
 			sound-dai = <&aiu AIU_CPU CPU_I2S_FIFO>;
 		};
@@ -209,6 +215,18 @@
 			codec-0 {
 				sound-dai = <&hdmi_tx>;
 			};
+		};
+
+		dai-link-3 {
+			sound-dai = <&toddr0>;
+		};
+
+		dai-link-4 {
+			sound-dai = <&toddr1>;
+		};
+
+		dai-link-5 {
+			sound-dai = <&toddr2>;
 		};
 	};
 
@@ -232,6 +250,22 @@
 };
 
 &aiu {
+	status = "okay";
+};
+
+&audin_frmt {
+	status = "okay";
+};
+
+&toddr0 {
+	status = "okay";
+};
+
+&toddr1 {
+	status = "okay";
+};
+
+&toddr2 {
 	status = "okay";
 };
 
