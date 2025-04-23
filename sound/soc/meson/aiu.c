@@ -15,6 +15,7 @@
 #include <dt-bindings/sound/meson-aiu.h>
 #include "aiu.h"
 #include "aiu-fifo.h"
+#include "formatter-common.h"
 
 #define AIU_I2S_MISC_958_SRC_SHIFT 3
 
@@ -32,10 +33,14 @@ static const struct snd_kcontrol_new aiu_spdif_encode_mux =
 static const struct snd_soc_dapm_widget aiu_cpu_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("SPDIF SRC SEL", SND_SOC_NOPM, 0, 0,
 			 &aiu_spdif_encode_mux),
+	SND_SOC_DAPM_PGA_E("Encoder Formatter", SND_SOC_NOPM, 0, 0, NULL, 0,
+			   aiu_formatter_event,
+			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
 };
 
 static const struct snd_soc_dapm_route aiu_cpu_dapm_routes[] = {
-	{ "I2S Encoder Playback", NULL, "I2S FIFO Playback" },
+	{ "Encoder Formatter", NULL, "I2S FIFO Playback" },
+	{ "I2S Encoder Playback", NULL, "Encoder Formatter" },
 	{ "SPDIF SRC SEL", "SPDIF", "SPDIF FIFO Playback" },
 	{ "SPDIF SRC SEL", "I2S", "I2S FIFO Playback" },
 	{ "SPDIF Encoder Playback", NULL, "SPDIF SRC SEL" },
@@ -277,6 +282,9 @@ static int aiu_probe(struct platform_device *pdev)
 	aiu->spdif.irq = platform_get_irq_byname(pdev, "spdif");
 	if (aiu->spdif.irq < 0)
 		return aiu->spdif.irq;
+
+	aiu->formatter.regmap = map;
+	aiu->formatter.ops = &aiu_formatter_ops;
 
 	ret = aiu_clk_get(dev);
 	if (ret)

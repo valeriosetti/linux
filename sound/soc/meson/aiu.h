@@ -7,6 +7,8 @@
 #ifndef _MESON_AIU_H
 #define _MESON_AIU_H
 
+#include "formatter-common.h"
+
 struct clk;
 struct clk_bulk_data;
 struct device;
@@ -36,6 +38,7 @@ struct aiu {
 	struct clk *spdif_mclk;
 	struct aiu_interface i2s;
 	struct aiu_interface spdif;
+	struct formatter formatter;
 	const struct aiu_platform_data *platform;
 };
 
@@ -54,10 +57,15 @@ int aiu_acodec_ctrl_register_component(struct device *dev);
 int aiu_fifo_i2s_dai_probe(struct snd_soc_dai *dai);
 int aiu_fifo_spdif_dai_probe(struct snd_soc_dai *dai);
 
+int aiu_formatter_event(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *control,
+			int event);
+
 extern const struct snd_soc_dai_ops aiu_fifo_i2s_dai_ops;
 extern const struct snd_soc_dai_ops aiu_fifo_spdif_dai_ops;
 extern const struct snd_soc_dai_ops aiu_encoder_i2s_dai_ops;
 extern const struct snd_soc_dai_ops aiu_encoder_spdif_dai_ops;
+extern const struct formatter_ops aiu_formatter_ops;
 
 #define AIU_IEC958_BPF			0x000
 #define AIU_958_MISC			0x010

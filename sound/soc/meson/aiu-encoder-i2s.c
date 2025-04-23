@@ -5,11 +5,13 @@
 
 #include <linux/bitfield.h>
 #include <linux/clk.h>
+#include <linux/mutex.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/soc-dai.h>
 
 #include "aiu.h"
+#include "formatter-common.h"
 
 #define AIU_I2S_SOURCE_DESC_MODE_8CH	BIT(0)
 #define AIU_I2S_SOURCE_DESC_MODE_24BIT	BIT(5)
@@ -33,49 +35,6 @@ static void aiu_encoder_i2s_divider_enable(struct snd_soc_component *component,
 	snd_soc_component_update_bits(component, AIU_CLK_CTRL,
 				      AIU_CLK_CTRL_I2S_DIV_EN,
 				      enable ? AIU_CLK_CTRL_I2S_DIV_EN : 0);
-}
-
-static int aiu_encoder_i2s_setup_desc(struct snd_soc_component *component,
-				      struct snd_pcm_hw_params *params)
-{
-	/* Always operate in split (classic interleaved) mode */
-	unsigned int desc = AIU_I2S_SOURCE_DESC_MODE_SPLIT;
-
-	/* Reset required to update the pipeline */
-	snd_soc_component_write(component, AIU_RST_SOFT, AIU_RST_SOFT_I2S_FAST);
-	snd_soc_component_read(component, AIU_I2S_SYNC);
-
-	switch (params_physical_width(params)) {
-	case 16: /* Nothing to do */
-		break;
-
-	case 32:
-		desc |= (AIU_I2S_SOURCE_DESC_MODE_24BIT |
-			 AIU_I2S_SOURCE_DESC_MODE_32BIT);
-		break;
-
-	default:
-		return -EINVAL;
-	}
-
-	switch (params_channels(params)) {
-	case 2: /* Nothing to do */
-		break;
-	case 8:
-		desc |= AIU_I2S_SOURCE_DESC_MODE_8CH;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	snd_soc_component_update_bits(component, AIU_I2S_SOURCE_DESC,
-				      AIU_I2S_SOURCE_DESC_MODE_8CH |
-				      AIU_I2S_SOURCE_DESC_MODE_24BIT |
-				      AIU_I2S_SOURCE_DESC_MODE_32BIT |
-				      AIU_I2S_SOURCE_DESC_MODE_SPLIT,
-				      desc);
-
-	return 0;
 }
 
 static int aiu_encoder_i2s_set_legacy_div(struct snd_soc_component *component,
@@ -184,89 +143,52 @@ static int aiu_encoder_i2s_set_clocks(struct snd_soc_component *component,
 	return 0;
 }
 
+static bool is_any_stream_active(struct snd_pcm_substream *substream,
+				struct snd_soc_dai *dai)
+{
+	struct stream_data *stream_data;
+	int stream;
+	bool is_any_active = false;
+
+	/* Just pick one as we're only interested on the common data. */
+	stream_data = snd_soc_dai_dma_data_get(dai, substream->stream);
+
+	mutex_lock(&(stream_data->common->lock));
+
+	for_each_pcm_streams(stream) {
+		stream_data = snd_soc_dai_dma_data_get(dai, stream);
+		is_any_active |= stream_data->active;
+	}
+
+	mutex_unlock(&(stream_data->common->lock));
+
+	return is_any_active;
+}
+
 static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 				     struct snd_pcm_hw_params *params,
 				     struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
-	int ret;
+	struct stream_data *stream_data;
 
-	/* Disable the clock while changing the settings */
-	aiu_encoder_i2s_divider_enable(component, false);
+	stream_data = snd_soc_dai_dma_data_get(dai, substream->stream);
+	stream_data->common->channels = params_channels(params);
+	stream_data->common->physical_width = params_physical_width(params);
+	stream_data->common->rate = params_rate(params);
 
-	ret = aiu_encoder_i2s_setup_desc(component, params);
-	if (ret) {
-		dev_err(dai->dev, "setting i2s desc failed\n");
-		return ret;
-	}
+	/* If any stream is already running do not attempt to change clocks */
+	if (is_any_stream_active(substream, dai))
+		return 0;
 
-	ret = aiu_encoder_i2s_set_clocks(component, params);
-	if (ret) {
-		dev_err(dai->dev, "setting i2s clocks failed\n");
-		return ret;
-	}
-
-	aiu_encoder_i2s_divider_enable(component, true);
-
-	return 0;
-}
-
-static int aiu_encoder_i2s_hw_free(struct snd_pcm_substream *substream,
-				   struct snd_soc_dai *dai)
-{
-	struct snd_soc_component *component = dai->component;
-
-	aiu_encoder_i2s_divider_enable(component, false);
-
-	return 0;
+	return aiu_encoder_i2s_set_clocks(component, params);
 }
 
 static int aiu_encoder_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
-	struct snd_soc_component *component = dai->component;
-	unsigned int inv = fmt & SND_SOC_DAIFMT_INV_MASK;
-	unsigned int val = 0;
-	unsigned int skew;
+	struct stream_data *stream_data = snd_soc_dai_dma_data_get(dai, 0);
 
-	/* Only CPU Master / Codec Slave supported ATM */
-	if ((fmt & SND_SOC_DAIFMT_CLOCK_PROVIDER_MASK) != SND_SOC_DAIFMT_BP_FP)
-		return -EINVAL;
-
-	if (inv == SND_SOC_DAIFMT_NB_IF ||
-	    inv == SND_SOC_DAIFMT_IB_IF)
-		val |= AIU_CLK_CTRL_LRCLK_INVERT;
-
-	if (inv == SND_SOC_DAIFMT_IB_NF ||
-	    inv == SND_SOC_DAIFMT_IB_IF)
-		val |= AIU_CLK_CTRL_AOCLK_INVERT;
-
-	/* bit-clock seems not to have the correct polarity by default. However
-	 * it cannot be changed with the "bitclock-inversion" DT property
-	 * otherwise this would propagate also to the external codec, thus
-	 * making the change unrelevant
-	 */
-	val ^= AIU_CLK_CTRL_AOCLK_INVERT;
-
-	/* Signal skew */
-	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
-	case SND_SOC_DAIFMT_I2S:
-		/* Invert sample clock for i2s */
-		val ^= AIU_CLK_CTRL_LRCLK_INVERT;
-		skew = 1;
-		break;
-	case SND_SOC_DAIFMT_LEFT_J:
-		skew = 0;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	val |= FIELD_PREP(AIU_CLK_CTRL_LRCLK_SKEW, skew);
-	snd_soc_component_update_bits(component, AIU_CLK_CTRL,
-				      AIU_CLK_CTRL_LRCLK_INVERT |
-				      AIU_CLK_CTRL_AOCLK_INVERT |
-				      AIU_CLK_CTRL_LRCLK_SKEW,
-				      val);
+	stream_data->common->fmt = fmt;
 
 	return 0;
 }
@@ -288,6 +210,51 @@ static int aiu_encoder_i2s_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 		dev_err(dai->dev, "Failed to set sysclk to %uHz", freq);
 
 	return ret;
+}
+
+static int aiu_encoder_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
+				   struct snd_soc_dai *dai)
+{
+	struct stream_data *stream_data =
+		snd_soc_dai_dma_data_get(dai, substream->stream);
+	struct formatter *formatter = stream_data->formatter;
+	int ret;
+
+	if (formatter == NULL) {
+		dev_err(dai->dev, "No formatter attached");
+		return -EINVAL;
+	}
+
+	mutex_lock(&(stream_data->common->lock));
+
+	switch (cmd) {
+		case SNDRV_PCM_TRIGGER_START:
+		case SNDRV_PCM_TRIGGER_RESUME:
+		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+			ret = formatter->ops->prepare(formatter, stream_data);
+			if (ret)
+				return ret;
+			ret = formatter->ops->enable(formatter);
+			if (ret)
+				return ret;
+			stream_data->active = true;
+			aiu_encoder_i2s_divider_enable(dai->component, true);
+			break;
+		case SNDRV_PCM_TRIGGER_SUSPEND:
+		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		case SNDRV_PCM_TRIGGER_STOP:
+			stream_data->active = false;
+			ret = formatter->ops->disable(formatter);
+			if (ret)
+				return ret;
+			break;
+		default:
+			return -EINVAL;
+	}
+
+	mutex_unlock(&(stream_data->common->lock));
+
+	return 0;
 }
 
 static const unsigned int hw_channels[] = {2, 8};
@@ -324,15 +291,71 @@ static void aiu_encoder_i2s_shutdown(struct snd_pcm_substream *substream,
 {
 	struct aiu *aiu = snd_soc_component_get_drvdata(dai->component);
 
-	clk_bulk_disable_unprepare(aiu->i2s.clk_num, aiu->i2s.clks);
+	if (!is_any_stream_active(substream, dai)) {
+		aiu_encoder_i2s_divider_enable(dai->component, false);
+		clk_bulk_disable_unprepare(aiu->i2s.clk_num, aiu->i2s.clks);
+	}
+}
+
+static int aiu_encoder_i2s_remove(struct snd_soc_dai *dai)
+{
+	struct stream_data *stream_data;
+	bool common_freed = false;
+	int stream;
+
+	for_each_pcm_streams(stream) {
+		stream_data = snd_soc_dai_dma_data_get(dai, stream);
+
+		if ((!common_freed) && (stream_data->common != NULL)) {
+			kfree(stream_data->common);
+			common_freed = true;
+		}
+
+		if (stream_data) {
+			WARN_ON(stream_data->formatter != NULL);
+			kfree(stream_data);
+		}
+	}
+
+	return 0;
+}
+
+static int aiu_encoder_i2s_probe(struct snd_soc_dai *dai)
+{
+	struct stream_common_data *common;
+	struct stream_data *sd;
+	int stream;
+
+	common = devm_kzalloc(dai->dev, sizeof(*common), GFP_KERNEL);
+	if (!common)
+		return -ENOMEM;
+
+	mutex_init(&(common->lock));
+
+	for_each_pcm_streams(stream) {
+		if (!snd_soc_dai_get_widget(dai, stream))
+			continue;
+
+		sd = devm_kzalloc(dai->dev, sizeof(*sd), GFP_KERNEL);
+		if (sd == NULL) {
+			aiu_encoder_i2s_remove(dai);
+			return -ENOMEM;
+		}
+		sd->common = common;
+
+		snd_soc_dai_dma_data_set(dai, stream, sd);
+	};
+
+	return 0;
 }
 
 const struct snd_soc_dai_ops aiu_encoder_i2s_dai_ops = {
+	.probe		= aiu_encoder_i2s_probe,
+	.remove		= aiu_encoder_i2s_remove,
 	.hw_params	= aiu_encoder_i2s_hw_params,
-	.hw_free	= aiu_encoder_i2s_hw_free,
 	.set_fmt	= aiu_encoder_i2s_set_fmt,
 	.set_sysclk	= aiu_encoder_i2s_set_sysclk,
 	.startup	= aiu_encoder_i2s_startup,
 	.shutdown	= aiu_encoder_i2s_shutdown,
+	.trigger	= aiu_encoder_i2s_trigger,
 };
-
