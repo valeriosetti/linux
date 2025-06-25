@@ -258,6 +258,41 @@ static void meson_card_clean_references(struct meson_card *priv)
 	kfree(priv->link_data);
 }
 
+/*
+ * Extend the list of AUX devices (card->aux_dev) which has been parsed from
+ * the device tree.
+ */
+static int meson_card_add_hardcoded_aux_devices(struct snd_soc_card *card,
+					struct snd_soc_dai_link_component *dlc,
+					int num_dlc)
+{
+	struct snd_soc_aux_dev *aux;
+	size_t new_size, i;
+
+	if (num_dlc <= 0) {
+		return 0;
+	}
+
+	new_size = (card->num_aux_devs + num_dlc) * sizeof(*aux);
+	card->aux_dev = devm_krealloc(card->dev, card->aux_dev,
+				      new_size, GFP_KERNEL);
+	if (card->aux_dev == NULL) {
+		dev_err(card->dev, "Memory re-allocation for AUX devices failed\n");
+		return -ENOMEM;
+	}
+
+	/* aux will point to the 1st newly allocated item. */
+	aux = &card->aux_dev[card->num_aux_devs];
+	card->num_aux_devs += num_dlc;
+
+	for (i = 0; i < num_dlc; i++, dlc++, aux++) {
+		memset(aux, 0, sizeof(*aux));
+		memcpy(&aux->dlc, dlc, sizeof(*dlc));
+	}
+
+	return 0;
+}
+
 int meson_card_probe(struct platform_device *pdev)
 {
 	const struct meson_card_match_data *data;
@@ -282,6 +317,11 @@ int meson_card_probe(struct platform_device *pdev)
 	priv->card.dev = dev;
 	priv->card.driver_name = dev->driver->name;
 	priv->match_data = data;
+
+	if (data->dapm_routes) {
+		priv->card.dapm_routes = data->dapm_routes;
+		priv->card.num_dapm_routes = data->num_dapm_routes;
+	}
 
 	ret = snd_soc_of_parse_card_name(&priv->card, "model");
 	if (ret < 0)
@@ -308,6 +348,17 @@ int meson_card_probe(struct platform_device *pdev)
 	ret = snd_soc_of_parse_aux_devs(&priv->card, "audio-aux-devs");
 	if (ret)
 		goto out_err;
+
+	/* Extend the list of AUX devices with hardcoded ones (not in DT). */
+	ret = meson_card_add_hardcoded_aux_devices(&priv->card, data->dlc,
+						   data->num_dlc);
+	if (ret)
+		goto out_err;
+
+	if (data->num_configs > 0) {
+		priv->card.codec_conf = data->codec_conf;
+		priv->card.num_configs = data->num_configs;
+	}
 
 	ret = devm_snd_soc_register_card(dev, &priv->card);
 	if (ret)

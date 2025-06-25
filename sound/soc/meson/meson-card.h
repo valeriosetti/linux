@@ -20,6 +20,15 @@ struct meson_card_match_data {
 	int (*add_link)(struct snd_soc_card *card,
 			struct device_node *node,
 			int *index);
+
+	const struct snd_soc_dapm_route* dapm_routes;
+	int num_dapm_routes;
+
+	struct snd_soc_dai_link_component *dlc;
+	int num_dlc;
+
+	struct snd_soc_codec_conf *codec_conf;
+	int num_configs;
 };
 
 struct meson_card {
