@@ -35,7 +35,6 @@ static const struct snd_soc_dapm_widget aiu_cpu_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route aiu_cpu_dapm_routes[] = {
-	{ "I2S Encoder Playback", NULL, "I2S FIFO Playback" },
 	{ "SPDIF SRC SEL", "SPDIF", "SPDIF FIFO Playback" },
 	{ "SPDIF SRC SEL", "I2S", "I2S FIFO Playback" },
 	{ "SPDIF Encoder Playback", NULL, "SPDIF SRC SEL" },
@@ -243,6 +242,7 @@ static int aiu_probe(struct platform_device *pdev)
 	void __iomem *regs;
 	struct regmap *map;
 	struct aiu *aiu;
+	struct resource *aiu_res;
 	int ret;
 
 	aiu = devm_kzalloc(dev, sizeof(*aiu), GFP_KERNEL);
@@ -290,6 +290,17 @@ static int aiu_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to register cpu component\n");
 		return ret;
 	}
+
+	/* Add the aiu-formatter device */
+	aiu_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (aiu_res == NULL) {
+		dev_err(dev, "Failed to get AIU resources\n");
+		goto err;
+	}
+
+	aiu->formatter_dev = platform_device_register_resndata(&pdev->dev,
+				"aiu-formatter", -1, aiu_res, 1,
+				&aiu_formatter_drv, sizeof(aiu_formatter_drv));
 
 	/* Register the hdmi codec control component */
 	ret = aiu_hdmi_ctrl_register_component(dev);

@@ -115,8 +115,30 @@ static int gx_card_add_link(struct snd_soc_card *card, struct device_node *np,
 	return ret;
 }
 
+static const struct snd_soc_dapm_route gx_card_dapm_routes[] = {
+	{ "AIU FRMT IN", NULL, "AIU I2S FIFO Playback" },
+	{ "AIU I2S Encoder Playback", NULL, "AIU FRMT OUT" },
+};
+
+static struct snd_soc_dai_link_component gx_card_dlc[] = {
+	{ .name = "aiu-formatter" },
+};
+
+static struct snd_soc_codec_conf gx_card_configuration[] = {
+	{
+		.dlc.name = "aiu-formatter",
+		.name_prefix = "AIU FRMT"
+	},
+};
+
 static const struct meson_card_match_data gx_card_match_data = {
 	.add_link = gx_card_add_link,
+	.dapm_routes = gx_card_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(gx_card_dapm_routes),
+	.dlc = gx_card_dlc,
+	.num_dlc = ARRAY_SIZE(gx_card_dlc),
+	.codec_conf = gx_card_configuration,
+	.num_configs = ARRAY_SIZE(gx_card_configuration),
 };
 
 static const struct of_device_id gx_card_of_match[] = {
