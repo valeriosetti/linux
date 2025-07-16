@@ -84,6 +84,24 @@
 	resets = <&reset RESET_AIU>;
 };
 
+&toddr0 {
+	compatible = "amlogic,toddr-gxbb", "amlogic,toddr";
+	clocks = <&clkc CLKID_I2S_SPDIF>;
+	clock-names = "i2s_input_clk";
+};
+
+&toddr1 {
+	compatible = "amlogic,toddr-gxbb", "amlogic,toddr";
+	clocks = <&clkc CLKID_I2S_SPDIF>;
+	clock-names = "i2s_input_clk";
+};
+
+&toddr2 {
+	compatible = "amlogic,toddr-gxbb", "amlogic,toddr";
+	clocks = <&clkc CLKID_I2S_SPDIF>;
+	clock-names = "i2s_input_clk";
+};
+
 &aobus {
 	pinctrl_aobus: pinctrl@14 {
 		compatible = "amlogic,meson-gxbb-aobus-pinctrl";
