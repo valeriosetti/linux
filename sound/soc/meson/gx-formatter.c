@@ -123,9 +123,16 @@ int gx_formatter_event(struct snd_soc_dapm_widget *w,
 		       struct snd_kcontrol *control,
 		       int event)
 {
-	struct snd_soc_component *c = snd_soc_dapm_to_component(w->dapm);
-	struct gx_formatter *formatter = snd_soc_component_get_drvdata(c);
+	struct snd_soc_component *c;
+	struct gx_formatter *formatter;
 	int ret = 0;
+
+	if (w->priv != NULL) {
+		formatter = w->priv;
+	} else {
+		c = snd_soc_dapm_to_component(w->dapm);
+		formatter = snd_soc_component_get_drvdata(c);
+	}
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -197,6 +204,25 @@ int gx_formatter_probe(struct platform_device *pdev)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(gx_formatter_probe);
+
+int gx_formatter_add_into_widget(struct device *dev,
+				 struct snd_soc_dapm_widget *w,
+				 const struct gx_formatter_driver *drv,
+				 struct regmap *regmap)
+{
+	struct gx_formatter *formatter;
+
+	formatter = devm_kzalloc(dev, sizeof(*formatter), GFP_KERNEL);
+	if (!formatter)
+		return -ENOMEM;
+
+	formatter->drv = drv;
+	formatter->map = regmap;
+
+	w->priv = formatter;
+
+	return 0;
+}
 
 int gx_stream_start(struct gx_stream *ts)
 {

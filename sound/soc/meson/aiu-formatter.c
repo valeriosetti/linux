@@ -52,12 +52,12 @@ aiu_formatter_get_stream(struct snd_soc_dapm_widget *w)
 
 static void aiu_formatter_enable(struct regmap *map)
 {
-
+	/* Nothing to do */
 }
 
 static void aiu_formatter_disable(struct regmap *map)
 {
-
+	/* Nothing to do */
 }
 
 static int aiu_formatter_prepare(struct regmap *map,
@@ -110,50 +110,9 @@ static int aiu_formatter_prepare(struct regmap *map,
 	return 0;
 }
 
-static const struct regmap_config aiu_formatter_regmap_cfg = {
-	.reg_bits	= 32,
-	.val_bits	= 32,
-	.reg_stride	= 4,
-	.max_register	= 0x2ac,
-};
-
-static const struct snd_soc_dapm_widget aiu_formatter_dapm_widgets[] = {
-	SND_SOC_DAPM_AIF_IN("IN",  NULL, 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_PGA_E("FRMT", SND_SOC_NOPM, 0, 0, NULL, 0,
-			   gx_formatter_event,
-			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
-	SND_SOC_DAPM_AIF_OUT("OUT", NULL, 0, SND_SOC_NOPM, 0, 0),
-};
-
-static const struct snd_soc_dapm_route aiu_formatter_dapm_routes[] = {
-	{ "FRMT", NULL, "IN" },
-	{ "OUT", NULL, "FRMT" },
-};
-
-static const struct snd_soc_component_driver aiu_formatter_component = {
-	.dapm_widgets		= aiu_formatter_dapm_widgets,
-	.num_dapm_widgets	= ARRAY_SIZE(aiu_formatter_dapm_widgets),
-	.dapm_routes		= aiu_formatter_dapm_routes,
-	.num_dapm_routes	= ARRAY_SIZE(aiu_formatter_dapm_routes),
-};
-
-static const struct gx_formatter_ops aiu_formatter_ops = {
+const struct gx_formatter_ops aiu_formatter_ops = {
 	.get_stream	= aiu_formatter_get_stream,
 	.prepare	= aiu_formatter_prepare,
 	.enable		= aiu_formatter_enable,
 	.disable	= aiu_formatter_disable,
 };
-
-const struct gx_formatter_driver aiu_formatter_drv = {
-	.component_drv	= &aiu_formatter_component,
-	.regmap_cfg	= &aiu_formatter_regmap_cfg,
-	.ops		= &aiu_formatter_ops,
-};
-
-static struct platform_driver aiu_formatter_pdrv = {
-	.probe = gx_formatter_probe,
-	.driver = {
-		.name = "aiu-formatter",
-	},
-};
-module_platform_driver(aiu_formatter_pdrv);

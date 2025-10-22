@@ -417,7 +417,7 @@ static const struct of_device_id toddr_of_match[] = {
 	{ .compatible = "amlogic,toddr-gxbb", .data = NULL },
 	{}
 };
-MODULE_DEVICE_TABLE(of, audin_of_match);
+MODULE_DEVICE_TABLE(of, toddr_of_match);
 
 static struct platform_driver toddr_pdrv = {
 	.probe = toddr_probe,

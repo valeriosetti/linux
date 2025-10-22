@@ -202,7 +202,7 @@ static const struct of_device_id audin_formatter_of_match[] = {
 	},
 	{}
 };
-MODULE_DEVICE_TABLE(of, audin_of_match);
+MODULE_DEVICE_TABLE(of, audin_formatter_of_match);
 
 static struct platform_driver audin_formatter_pdrv = {
 	.probe = gx_formatter_probe,

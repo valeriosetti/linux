@@ -35,11 +35,16 @@ struct gx_formatter_driver {
 };
 
 int gx_formatter_set_channel_masks(struct regmap *map,
-					struct gx_stream *ts,
-					unsigned int offset);
+				   struct gx_stream *ts,
+				   unsigned int offset);
 int gx_formatter_event(struct snd_soc_dapm_widget *w,
 		       struct snd_kcontrol *control,
 		       int event);
 int gx_formatter_probe(struct platform_device *pdev);
+
+int gx_formatter_add_into_widget(struct device *dev,
+				 struct snd_soc_dapm_widget *w,
+				 const struct gx_formatter_driver *drv,
+				 struct regmap *regmap);
 
 #endif /* _MESON_GX_FORMATTER_H */

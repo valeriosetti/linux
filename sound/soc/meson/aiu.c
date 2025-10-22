@@ -29,12 +29,17 @@ static SOC_ENUM_SINGLE_DECL(aiu_spdif_encode_sel_enum, AIU_I2S_MISC,
 static const struct snd_kcontrol_new aiu_spdif_encode_mux =
 	SOC_DAPM_ENUM("SPDIF Buffer Src", aiu_spdif_encode_sel_enum);
 
-static const struct snd_soc_dapm_widget aiu_cpu_dapm_widgets[] = {
+static struct snd_soc_dapm_widget aiu_cpu_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("SPDIF SRC SEL", SND_SOC_NOPM, 0, 0,
 			 &aiu_spdif_encode_mux),
+	SND_SOC_DAPM_PGA_E("FRMT", SND_SOC_NOPM, 0, 0, NULL, 0,
+			   gx_formatter_event,
+			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
 };
 
 static const struct snd_soc_dapm_route aiu_cpu_dapm_routes[] = {
+	{ "FRMT", NULL, "I2S FIFO Playback" },
+	{ "I2S Encoder Playback", NULL, "FRMT" },
 	{ "SPDIF SRC SEL", "SPDIF", "SPDIF FIFO Playback" },
 	{ "SPDIF SRC SEL", "I2S", "I2S FIFO Playback" },
 	{ "SPDIF Encoder Playback", NULL, "SPDIF SRC SEL" },
@@ -178,6 +183,11 @@ static const struct regmap_config aiu_regmap_cfg = {
 	.max_register	= 0x2ac,
 };
 
+const struct gx_formatter_driver aiu_formatter_drv = {
+	.regmap_cfg	= &aiu_regmap_cfg,
+	.ops		= &aiu_formatter_ops,
+};
+
 static int aiu_clk_bulk_get(struct device *dev,
 			    const char * const *ids,
 			    unsigned int num,
@@ -249,7 +259,6 @@ static int aiu_probe(struct platform_device *pdev)
 	void __iomem *regs;
 	struct regmap *map;
 	struct aiu *aiu;
-	struct resource *aiu_res;
 	int ret;
 
 	aiu = devm_kzalloc(dev, sizeof(*aiu), GFP_KERNEL);
@@ -298,16 +307,14 @@ static int aiu_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* Add the aiu-formatter device */
-	aiu_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (aiu_res == NULL) {
-		dev_err(dev, "Failed to get AIU resources\n");
-		goto err;
+	/* Allocate the aiu-formatter into its widget */
+	ret = gx_formatter_add_into_widget(dev, &aiu_cpu_dapm_widgets[1],
+					   &aiu_formatter_drv,
+					   map);
+	if (ret) {
+		dev_err(dev, "Failed to allocate aiu formatter\n");
+		return ret;
 	}
-
-	aiu->formatter_dev = platform_device_register_resndata(&pdev->dev,
-				"aiu-formatter", -1, aiu_res, 1,
-				&aiu_formatter_drv, sizeof(aiu_formatter_drv));
 
 	/* Register the hdmi codec control component */
 	ret = aiu_hdmi_ctrl_register_component(dev);
