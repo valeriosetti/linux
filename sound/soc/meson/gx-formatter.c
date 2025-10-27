@@ -178,6 +178,25 @@ int gx_formatter_probe(struct platform_device *pdev)
 }
 EXPORT_SYMBOL_GPL(gx_formatter_probe);
 
+int gx_formatter_add_into_widget(struct device *dev,
+				 struct snd_soc_dapm_widget *w,
+				 const struct gx_formatter_driver *drv,
+				 struct regmap *regmap)
+{
+	struct gx_formatter *formatter;
+
+	formatter = devm_kzalloc(dev, sizeof(*formatter), GFP_KERNEL);
+	if (!formatter)
+		return -ENOMEM;
+
+	formatter->drv = drv;
+	formatter->map = regmap;
+
+	w->priv = formatter;
+
+	return 0;
+}
+
 int gx_stream_start(struct gx_stream *ts)
 {
 	struct gx_formatter *formatter;
