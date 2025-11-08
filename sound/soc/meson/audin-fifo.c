@@ -17,26 +17,26 @@
 #define AUDIN_FIFO_PTR		0x08
 
 /* FIFOx CTRL registers and bits */
-#define AUDIN_FIFO_CTRL		0x14
-	#define AUDIN_FIFO_CTRL_EN		BIT(0)
-	#define AUDIN_FIFO_CTRL_RST		BIT(1)
-	#define AUDIN_FIFO_CTRL_LOAD		BIT(2)
-	#define AUDIN_FIFO_CTRL_DIN_SEL_OFF	3
-	#define AUDIN_FIFO_CTRL_DIN_SEL_MASK	GENMASK(5, 3)
-	#define AUDIN_FIFO_CTRL_ENDIAN_MASK	GENMASK(10, 8)
-	#define AUDIN_FIFO_CTRL_CHAN_MASK	GENMASK(14, 11)
-	#define AUDIN_FIFO_CTRL_UG		BIT(15)
+#define AUDIN_FIFO_CTRL			0x14
+#define  AUDIN_FIFO_CTRL_EN		BIT(0)
+#define  AUDIN_FIFO_CTRL_RST		BIT(1)
+#define  AUDIN_FIFO_CTRL_LOAD		BIT(2)
+#define  AUDIN_FIFO_CTRL_DIN_SEL_OFF	3
+#define  AUDIN_FIFO_CTRL_DIN_SEL_MASK	GENMASK(5, 3)
+#define  AUDIN_FIFO_CTRL_ENDIAN_MASK	GENMASK(10, 8)
+#define  AUDIN_FIFO_CTRL_CHAN_MASK	GENMASK(14, 11)
+#define  AUDIN_FIFO_CTRL_UG		BIT(15)
 
 /* FIFOx_CTRL1 registers and bits */
-#define AUDIN_FIFO_CTRL1	0x18
-	#define AUDIN_FIFO_CTRL1_DIN_POS_2		BIT(7)
-	#define AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK	GENMASK(3, 2)
-	#define AUDIN_FIFO_CTRL1_DIN_POS_01_MASK	GENMASK(1, 0)
+#define AUDIN_FIFO_CTRL1			0x18
+#define  AUDIN_FIFO_CTRL1_DIN_POS_2		BIT(7)
+#define  AUDIN_FIFO_CTRL1_DIN_BYTE_NUM_MASK	GENMASK(3, 2)
+#define  AUDIN_FIFO_CTRL1_DIN_POS_01_MASK	GENMASK(1, 0)
 
 /* This is the size of the FIFO (i.e. 64*64 bytes). */
 #define AUDIN_FIFO_I2S_BLOCK		4096
 
-static const struct snd_pcm_hardware toddr_pcm_hw = {
+static const struct snd_pcm_hardware audin_fifo_pcm_hw = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED |
 		 SNDRV_PCM_INFO_MMAP |
 		 SNDRV_PCM_INFO_MMAP_VALID |
@@ -55,24 +55,26 @@ static const struct snd_pcm_hardware toddr_pcm_hw = {
 	.buffer_bytes_max = 1 * 1024 * 1024,
 };
 
-struct toddr_drvdata {
+struct audin_fifo_drvdata {
 	struct clk *input_clk;
 };
 
-struct toddr_dai_data {
+struct audin_fifo_dai_data {
 	/*
 	 * The AUDIN peripheral has an IRQ to signal when data is received, but
 	 * it cannot grant a periodic behavior. The reason is that the register
 	 * which holds the address which triggers the IRQ must be updated
-	 * continuously. Therefore we use a periodic timer.
+	 * continuously. This create a risk of overflow if for any reason the
+	 * ISR execution is delayed. Using a periodic time is therefore simpler
+	 * and more reliable.
 	 */
 	struct hrtimer polling_timer;
 	int poll_time_ns;
 	struct snd_pcm_substream *substream;
 };
 
-static int toddr_dai_trigger(struct snd_pcm_substream *substream, int cmd,
-			     struct snd_soc_dai *dai)
+static int audin_fifo_dai_trigger(struct snd_pcm_substream *substream, int cmd,
+				  struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
 	(void) dai;
@@ -98,7 +100,7 @@ static int toddr_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	return 0;
 }
 
-static int toddr_dai_prepare(struct snd_pcm_substream *substream,
+static int audin_fifo_dai_prepare(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
@@ -123,12 +125,12 @@ static int toddr_dai_prepare(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int toddr_dai_hw_params(struct snd_pcm_substream *substream,
-			       struct snd_pcm_hw_params *params,
-			       struct snd_soc_dai *dai)
+static int audin_fifo_dai_hw_params(struct snd_pcm_substream *substream,
+				    struct snd_pcm_hw_params *params,
+				    struct snd_soc_dai *dai)
 {
 	struct snd_soc_component *component = dai->component;
-	struct toddr_dai_data *data = snd_soc_dai_dma_data_get_capture(dai);
+	struct audin_fifo_dai_data *data = snd_soc_dai_dma_data_get_capture(dai);
 	unsigned int val;
 
 	if (params_width(params) != 16) {
@@ -187,13 +189,13 @@ static int toddr_dai_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int toddr_dai_startup(struct snd_pcm_substream *substream,
-			     struct snd_soc_dai *dai)
+static int audin_fifo_dai_startup(struct snd_pcm_substream *substream,
+				  struct snd_soc_dai *dai)
 {
-	struct toddr_dai_data *data = snd_soc_dai_dma_data_get_capture(dai);
+	struct audin_fifo_dai_data *data = snd_soc_dai_dma_data_get_capture(dai);
 	int ret;
 
-	snd_soc_set_runtime_hwparams(substream, &toddr_pcm_hw);
+	snd_soc_set_runtime_hwparams(substream, &audin_fifo_pcm_hw);
 
 	ret = snd_pcm_hw_constraint_step(substream->runtime, 0,
 					 SNDRV_PCM_HW_PARAM_BUFFER_BYTES,
@@ -219,15 +221,15 @@ static int toddr_dai_startup(struct snd_pcm_substream *substream,
 	return ret;
 }
 
-static void toddr_dai_shutdown(struct snd_pcm_substream *substream,
-			       struct snd_soc_dai *dai)
+static void audin_fifo_dai_shutdown(struct snd_pcm_substream *substream,
+				    struct snd_soc_dai *dai)
 {
-	struct toddr_dai_data *data = snd_soc_dai_dma_data_get_capture(dai);
+	struct audin_fifo_dai_data *data = snd_soc_dai_dma_data_get_capture(dai);
 
 	hrtimer_cancel(&data->polling_timer);
 }
 
-static int toddr_dai_pcm_new(struct snd_soc_pcm_runtime *rtd,
+static int audin_fifo_dai_pcm_new(struct snd_soc_pcm_runtime *rtd,
 			     struct snd_soc_dai *dai)
 {
 	int ret;
@@ -240,8 +242,8 @@ static int toddr_dai_pcm_new(struct snd_soc_pcm_runtime *rtd,
 
 	ret = snd_pcm_set_managed_buffer_all(rtd->pcm, SNDRV_DMA_TYPE_DEV,
 					     dai->dev,
-					     toddr_pcm_hw.buffer_bytes_max,
-					     toddr_pcm_hw.buffer_bytes_max);
+					     audin_fifo_pcm_hw.buffer_bytes_max,
+					     audin_fifo_pcm_hw.buffer_bytes_max);
 	if (ret) {
 		dev_err(dai->dev, "Failed to set PCM managed buffer %d\n", ret);
 		return ret;
@@ -252,50 +254,50 @@ static int toddr_dai_pcm_new(struct snd_soc_pcm_runtime *rtd,
 
 static enum hrtimer_restart dai_timer_cb(struct hrtimer *timer)
 {
-	struct toddr_dai_data *data = container_of(timer, struct toddr_dai_data,
-						   polling_timer);
+	struct audin_fifo_dai_data *data =
+		container_of(timer, struct audin_fifo_dai_data, polling_timer);
 	snd_pcm_period_elapsed(data->substream);
 	hrtimer_forward_now(timer, data->poll_time_ns);
 	return HRTIMER_RESTART;
 }
 
-static int toddr_dai_probe(struct snd_soc_dai *dai)
+static int audin_fifo_dai_probe(struct snd_soc_dai *dai)
 {
-	struct toddr_dai_data *data;
+	struct audin_fifo_dai_data *data;
 
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
 	hrtimer_setup(&data->polling_timer, dai_timer_cb, CLOCK_MONOTONIC,
-			HRTIMER_MODE_REL);
+		      HRTIMER_MODE_REL);
 
 	snd_soc_dai_dma_data_set_capture(dai, data);
 
 	return 0;
 }
 
-static int toddr_dai_remove(struct snd_soc_dai *dai)
+static int audin_fifo_dai_remove(struct snd_soc_dai *dai)
 {
 	kfree(snd_soc_dai_dma_data_get_capture(dai));
 
 	return 0;
 }
 
-const struct snd_soc_dai_ops toddr_dai_ops = {
-	.trigger	= toddr_dai_trigger,
-	.prepare	= toddr_dai_prepare,
-	.hw_params	= toddr_dai_hw_params,
-	.startup	= toddr_dai_startup,
-	.shutdown	= toddr_dai_shutdown,
-	.pcm_new	= toddr_dai_pcm_new,
-	.probe		= toddr_dai_probe,
-	.remove		= toddr_dai_remove,
+const struct snd_soc_dai_ops audin_fifo_dai_ops = {
+	.trigger	= audin_fifo_dai_trigger,
+	.prepare	= audin_fifo_dai_prepare,
+	.hw_params	= audin_fifo_dai_hw_params,
+	.startup	= audin_fifo_dai_startup,
+	.shutdown	= audin_fifo_dai_shutdown,
+	.pcm_new	= audin_fifo_dai_pcm_new,
+	.probe		= audin_fifo_dai_probe,
+	.remove		= audin_fifo_dai_remove,
 };
 
-static struct snd_soc_dai_driver toddr_dai_drv[] = {
+static struct snd_soc_dai_driver audin_fifo_dai_drv[] = {
 	{
-		.name = "TODDR",
+		.name = "FIFO",
 		.capture = {
 			.stream_name	= "Capture",
 			.channels_min	= 2,
@@ -305,12 +307,12 @@ static struct snd_soc_dai_driver toddr_dai_drv[] = {
 			.rate_max	= 192000,
 			.formats	= SNDRV_PCM_FMTBIT_S16_LE,
 		},
-		.ops = &toddr_dai_ops,
+		.ops = &audin_fifo_dai_ops,
 	},
 };
 
 static snd_pcm_uframes_t
-toddr_component_pointer(struct snd_soc_component *component,
+audin_fifo_component_pointer(struct snd_soc_component *component,
 		        struct snd_pcm_substream *substream)
 {
 	unsigned int start, ptr;
@@ -322,49 +324,49 @@ toddr_component_pointer(struct snd_soc_component *component,
 	return bytes_to_frames(substream->runtime, ptr - start);
 }
 
-static const char * const toddr_fifo_input_sel_texts[] = {
+static const char * const audin_fifo_fifo_input_sel_texts[] = {
 	"SPDIF", "I2S", "PCM", "HDMI", "Demodulator"
 };
 
-static SOC_ENUM_SINGLE_DECL(toddr_input_sel_enum, AUDIN_FIFO_CTRL,
+static SOC_ENUM_SINGLE_DECL(audin_fifo_input_sel_enum, AUDIN_FIFO_CTRL,
 			    AUDIN_FIFO_CTRL_DIN_SEL_OFF,
-			    toddr_fifo_input_sel_texts);
+			    audin_fifo_fifo_input_sel_texts);
 
-static const struct snd_kcontrol_new todddr_input_sel_mux =
-	SOC_DAPM_ENUM("SRC SEL", toddr_input_sel_enum);
+static const struct snd_kcontrol_new audin_fifo_input_sel_mux =
+	SOC_DAPM_ENUM("SRC SEL", audin_fifo_input_sel_enum);
 
-static const struct snd_soc_dapm_widget toddr_dapm_widgets[] = {
+static const struct snd_soc_dapm_widget audin_fifo_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("I2S IN", NULL, 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_MUX("SRC SEL", SND_SOC_NOPM, 0, 0,
-			 &todddr_input_sel_mux),
+			 &audin_fifo_input_sel_mux),
 };
 
-static const struct snd_soc_dapm_route toddr_dapm_routes[] = {
+static const struct snd_soc_dapm_route audin_fifo_dapm_routes[] = {
 	{ "SRC SEL", "I2S", "I2S IN" },
 	{ "Capture", NULL, "SRC SEL" },
 };
 
-static const struct snd_soc_component_driver toddr_component = {
-	.dapm_widgets		= toddr_dapm_widgets,
-	.num_dapm_widgets	= ARRAY_SIZE(toddr_dapm_widgets),
-	.dapm_routes		= toddr_dapm_routes,
-	.num_dapm_routes	= ARRAY_SIZE(toddr_dapm_routes),
-	.pointer		= toddr_component_pointer,
+static const struct snd_soc_component_driver audin_fifo_component = {
+	.dapm_widgets		= audin_fifo_dapm_widgets,
+	.num_dapm_widgets	= ARRAY_SIZE(audin_fifo_dapm_widgets),
+	.dapm_routes		= audin_fifo_dapm_routes,
+	.num_dapm_routes	= ARRAY_SIZE(audin_fifo_dapm_routes),
+	.pointer		= audin_fifo_component_pointer,
 };
 
-static const struct regmap_config toddr_regmap_cfg = {
+static const struct regmap_config audin_fifo_regmap_cfg = {
 	.reg_bits	= 32,
 	.val_bits	= 32,
 	.reg_stride	= 4,
 	.max_register	= 0x1b,
 };
 
-static int toddr_probe(struct platform_device *pdev)
+static int audin_fifo_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	void __iomem *regs;
 	struct regmap *map;
-	struct toddr_drvdata *data;
+	struct audin_fifo_drvdata *data;
 	int ret;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
@@ -376,7 +378,7 @@ static int toddr_probe(struct platform_device *pdev)
 	if (IS_ERR(regs))
 		return PTR_ERR(regs);
 
-	map = devm_regmap_init_mmio(dev, regs, &toddr_regmap_cfg);
+	map = devm_regmap_init_mmio(dev, regs, &audin_fifo_regmap_cfg);
 	if (IS_ERR(map)) {
 		dev_err(dev, "Failed to init regmap: %ld\n", PTR_ERR(map));
 		return PTR_ERR(map);
@@ -394,9 +396,9 @@ static int toddr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = snd_soc_register_component(dev, &toddr_component,
-					 toddr_dai_drv,
-					 ARRAY_SIZE(toddr_dai_drv));
+	ret = snd_soc_register_component(dev, &audin_fifo_component,
+					 audin_fifo_dai_drv,
+					 ARRAY_SIZE(audin_fifo_dai_drv));
 	if (ret) {
 		dev_err(dev, "failed to register component\n");
 		return ret;
@@ -405,30 +407,30 @@ static int toddr_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static void toddr_remove(struct platform_device *pdev)
+static void audin_fifo_remove(struct platform_device *pdev)
 {
-	struct toddr_drvdata *data = platform_get_drvdata(pdev);
+	struct audin_fifo_drvdata *data = platform_get_drvdata(pdev);
 
 	clk_disable_unprepare(data->input_clk);
 	snd_soc_unregister_component(&pdev->dev);
 }
 
-static const struct of_device_id toddr_of_match[] = {
-	{ .compatible = "amlogic,toddr-gxbb", .data = NULL },
+static const struct of_device_id audin_fifo_of_match[] = {
+	{ .compatible = "amlogic,meson-gxbb-audin-fifo", .data = NULL },
 	{}
 };
-MODULE_DEVICE_TABLE(of, toddr_of_match);
+MODULE_DEVICE_TABLE(of, audin_fifo_of_match);
 
-static struct platform_driver toddr_pdrv = {
-	.probe = toddr_probe,
-	.remove = toddr_remove,
+static struct platform_driver audin_fifo_pdrv = {
+	.probe = audin_fifo_probe,
+	.remove = audin_fifo_remove,
 	.driver = {
-		.name = "meson-toddr",
-		.of_match_table = toddr_of_match,
+		.name = "meson-gx-audin-fifo",
+		.of_match_table = audin_fifo_of_match,
 	},
 };
-module_platform_driver(toddr_pdrv);
+module_platform_driver(audin_fifo_pdrv);
 
-MODULE_DESCRIPTION("Meson AUDIN TODDR Driver");
+MODULE_DESCRIPTION("Meson AUDIN FIFO Driver");
 MODULE_AUTHOR("Valerio Setti <vsetti@baylibre.com>");
 MODULE_LICENSE("GPL v2");

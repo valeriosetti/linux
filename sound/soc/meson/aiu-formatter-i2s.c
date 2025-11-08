@@ -19,7 +19,7 @@
 #define AIU_I2S_DAC_CFG_MSB_FIRST	BIT(2)
 
 static struct snd_soc_dai *
-aiu_formatter_get_be(struct snd_soc_dapm_widget *w)
+aiu_formatter_i2s_get_be(struct snd_soc_dapm_widget *w)
 {
 	struct snd_soc_dapm_path *p;
 	struct snd_soc_dai *be;
@@ -31,7 +31,7 @@ aiu_formatter_get_be(struct snd_soc_dapm_widget *w)
 		if (p->sink->id == snd_soc_dapm_dai_in)
 			return (struct snd_soc_dai *)p->sink->priv;
 
-		be = aiu_formatter_get_be(p->sink);
+		be = aiu_formatter_i2s_get_be(p->sink);
 		if (be)
 			return be;
 	}
@@ -40,9 +40,9 @@ aiu_formatter_get_be(struct snd_soc_dapm_widget *w)
 }
 
 static struct gx_stream *
-aiu_formatter_get_stream(struct snd_soc_dapm_widget *w)
+aiu_formatter_i2s_get_stream(struct snd_soc_dapm_widget *w)
 {
-	struct snd_soc_dai *be = aiu_formatter_get_be(w);
+	struct snd_soc_dai *be = aiu_formatter_i2s_get_be(w);
 
 	if (!be)
 		return NULL;
@@ -50,17 +50,17 @@ aiu_formatter_get_stream(struct snd_soc_dapm_widget *w)
 	return snd_soc_dai_dma_data_get_playback(be);
 }
 
-static void aiu_formatter_enable(struct regmap *map)
+static void aiu_formatter_i2s_enable(struct regmap *map)
 {
 	/* Nothing to do */
 }
 
-static void aiu_formatter_disable(struct regmap *map)
+static void aiu_formatter_i2s_disable(struct regmap *map)
 {
 	/* Nothing to do */
 }
 
-static int aiu_formatter_prepare(struct regmap *map,
+static int aiu_formatter_i2s_prepare(struct regmap *map,
 				 const struct gx_formatter_hw *quirks,
 				 struct gx_stream *ts)
 {
@@ -110,9 +110,9 @@ static int aiu_formatter_prepare(struct regmap *map,
 	return 0;
 }
 
-const struct gx_formatter_ops aiu_formatter_ops = {
-	.get_stream	= aiu_formatter_get_stream,
-	.prepare	= aiu_formatter_prepare,
-	.enable		= aiu_formatter_enable,
-	.disable	= aiu_formatter_disable,
+const struct gx_formatter_ops aiu_formatter_i2s_ops = {
+	.get_stream	= aiu_formatter_i2s_get_stream,
+	.prepare	= aiu_formatter_i2s_prepare,
+	.enable		= aiu_formatter_i2s_enable,
+	.disable	= aiu_formatter_i2s_disable,
 };

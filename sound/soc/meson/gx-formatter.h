@@ -42,9 +42,9 @@ int gx_formatter_event(struct snd_soc_dapm_widget *w,
 		       int event);
 int gx_formatter_probe(struct platform_device *pdev);
 
-int gx_formatter_add_into_widget(struct device *dev,
-				 struct snd_soc_dapm_widget *w,
-				 const struct gx_formatter_driver *drv,
-				 struct regmap *regmap);
+int gx_formatter_create(struct device *dev,
+			struct snd_soc_dapm_widget *w,
+			const struct gx_formatter_driver *drv,
+			struct regmap *regmap);
 
 #endif /* _MESON_GX_FORMATTER_H */

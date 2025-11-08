@@ -238,15 +238,6 @@ static int aiu_encoder_i2s_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 	return ret;
 }
 
-static const unsigned int aiu_i2s_rates[] = {
-	8000, 11025, 16000, 22050, 32000, 44100, 48000,
-	64000, 88200, 96000, 176400, 192000
-};
-static const struct snd_pcm_hw_constraint_list aiu_i2s_rate_constraints = {
-	.count = ARRAY_SIZE(aiu_i2s_rates),
-	.list = aiu_i2s_rates,
-};
-
 static const unsigned int hw_channels[] = {2, 8};
 static const struct snd_pcm_hw_constraint_list hw_channel_constraints = {
 	.list = hw_channels,
@@ -271,17 +262,13 @@ static int aiu_encoder_i2s_startup(struct snd_pcm_substream *substream,
 	}
 
 	if (snd_soc_dai_active(dai)) {
-		/* Apply component wide rate symmetry */
+		/* Apply interface wide rate symmetry */
 		ret = snd_pcm_hw_constraint_single(substream->runtime,
 						   SNDRV_PCM_HW_PARAM_RATE,
 						   iface->rate);
-	} else {
-		ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
-						 SNDRV_PCM_HW_PARAM_RATE,
-						 &aiu_i2s_rate_constraints);
+		if (ret < 0)
+			dev_err(dai->dev, "can't set iface rate constraint\n");
 	}
-	if (ret < 0)
-		dev_err(dai->dev, "can't set iface rate constraint\n");
 
 	ret = clk_bulk_prepare_enable(aiu->i2s.clk_num, aiu->i2s.clks);
 	if (ret)
@@ -297,7 +284,9 @@ static void aiu_encoder_i2s_shutdown(struct snd_pcm_substream *substream,
 {
 	struct aiu *aiu = snd_soc_component_get_drvdata(dai->component);
 
-	aiu_encoder_i2s_divider_enable(dai->component, false);
+	if (!snd_soc_dai_active(dai)) {
+		aiu_encoder_i2s_divider_enable(dai->component, false);
+	}
 	clk_bulk_disable_unprepare(aiu->i2s.clk_num, aiu->i2s.clks);
 }
 

@@ -178,10 +178,10 @@ int gx_formatter_probe(struct platform_device *pdev)
 }
 EXPORT_SYMBOL_GPL(gx_formatter_probe);
 
-int gx_formatter_add_into_widget(struct device *dev,
-				 struct snd_soc_dapm_widget *w,
-				 const struct gx_formatter_driver *drv,
-				 struct regmap *regmap)
+int gx_formatter_create(struct device *dev,
+			struct snd_soc_dapm_widget *w,
+			const struct gx_formatter_driver *drv,
+			struct regmap *regmap)
 {
 	struct gx_formatter *formatter;
 

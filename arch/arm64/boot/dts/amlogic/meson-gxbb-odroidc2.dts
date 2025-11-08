@@ -189,11 +189,11 @@
 				       <270950400>,
 				       <393216000>;
 
-		audio-aux-devs = <&audin_frmt>;
-		audio-routing = "AUDIN FRMT IN", "AIU I2S Encoder Capture",
-				"TODDR0 Capture", "AUDIN FRMT OUT",
-				"TODDR1 Capture", "AUDIN FRMT OUT",
-				"TODDR2 Capture", "AUDIN FRMT OUT";
+		audio-aux-devs = <&audin_i2s_decoder>;
+		audio-routing = "AUDIN I2S Decoder IN", "AIU I2S Encoder Capture",
+				"AUDIN FIFO0 I2S IN", "AUDIN I2S Decoder OUT",
+				"AUDIN FIFO1 I2S IN", "AUDIN I2S Decoder OUT",
+				"AUDIN FIFO2 I2S IN", "AUDIN I2S Decoder OUT";
 
 		dai-link-0 {
 			sound-dai = <&aiu AIU_CPU CPU_I2S_FIFO>;
@@ -218,15 +218,15 @@
 		};
 
 		dai-link-3 {
-			sound-dai = <&toddr0>;
+			sound-dai = <&audin_fifo0>;
 		};
 
 		dai-link-4 {
-			sound-dai = <&toddr1>;
+			sound-dai = <&audin_fifo1>;
 		};
 
 		dai-link-5 {
-			sound-dai = <&toddr2>;
+			sound-dai = <&audin_fifo2>;
 		};
 	};
 
@@ -253,19 +253,19 @@
 	status = "okay";
 };
 
-&audin_frmt {
+&audin_i2s_decoder {
 	status = "okay";
 };
 
-&toddr0 {
+&audin_fifo0 {
 	status = "okay";
 };
 
-&toddr1 {
+&audin_fifo1 {
 	status = "okay";
 };
 
-&toddr2 {
+&audin_fifo2 {
 	status = "okay";
 };
 

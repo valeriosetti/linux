@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
 %YAML 1.2
 ---
-$id: http://devicetree.org/schemas/sound/amlogic,audin-formatter.yaml#
+$id: http://devicetree.org/schemas/sound/amlogic,meson-gx-audin-i2s-decoder.yaml#
 $schema: http://devicetree.org/meta-schemas/core.yaml#
 
-title: Amlogic AUDIN input formatter
+title: Amlogic GX AUDIN I2S Input Decoder
 
 maintainers:
   - Valerio Setti <vsetti@baylibre.com>
@@ -14,7 +14,7 @@ allOf:
 
 properties:
   $nodename:
-    pattern: "^audin-formatter@.*"
+    pattern: "^audio-controller@.*"
 
   "#sound-dai-cells":
     const: 0
@@ -22,8 +22,8 @@ properties:
   compatible:
     items:
       - enum:
-          - amlogic,audin-formatter-gxbb
-      - const: amlogic,audin-formatter
+          - amlogic,meson-gxbb-audin-decoder-i2s
+      - const: amlogic,meson-gx-audin-decoder-i2s
 
   reg:
     maxItems: 1
@@ -41,10 +41,11 @@ examples:
   - |
     #include <dt-bindings/clock/gxbb-clkc.h>
 
-    audin-formatter@a040 {
-      compatible = "amlogic,audin-formatter-gxbb", "amlogic,audin-formatter";
+    audio-controller@a040 {
+      compatible = "amlogic,meson-gxbb-audin-decoder-i2s",
+                   "amlogic,meson-gx-audin-decoder-i2s";
       #sound-dai-cells = <0>;
-      sound-name-prefix = "AUDIN FRMT";
+      sound-name-prefix = "AUDIN I2S Decoder";
       reg = <0xa040 0x4>;
       status = "disabled";
     };

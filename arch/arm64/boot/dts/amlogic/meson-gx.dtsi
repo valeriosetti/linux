@@ -331,34 +331,34 @@
 				status = "disabled";
 			};
 
-			audin_frmt: audin-formatter@a040 {
-				compatible = "amlogic,audin-formatter";
+			audin_i2s_decoder: audio-controller@a040 {
+				compatible = "amlogic,meson-gx-audin-decoder-i2s";
 				#sound-dai-cells = <0>;
-				sound-name-prefix = "AUDIN FRMT";
+				sound-name-prefix = "AUDIN I2S Decoder";
 				reg = <0x0 0xa040 0x0 0x4>;
 				status = "disabled";
 			};
 
-			toddr0: audin-toddr@a080 {
-				compatible = "amlogic,toddr";
+			audin_fifo0: audio-controller@a080 {
+				compatible = "amlogic,meson-gx-audin-fifo";
 				#sound-dai-cells = <0>;
-				sound-name-prefix = "TODDR0";
+				sound-name-prefix = "AUDIN FIFO0";
 				reg = <0x0 0xa080 0x0 0x1c>;
 				status = "disabled";
 			};
 
-			toddr1: audin-toddr@a0cc {
-				compatible = "amlogic,toddr";
+			audin_fifo1: audio-controller@a0cc {
+				compatible = "amlogic,meson-gx-audin-fifo";
 				#sound-dai-cells = <0>;
-				sound-name-prefix = "TODDR1";
+				sound-name-prefix = "AUDIN FIFO1";
 				reg = <0x0 0xa0cc 0x0 0x1c>;
 				status = "disabled";
 			};
 
-			toddr2: audin-toddr@a114 {
-				compatible = "amlogic,toddr";
+			audin_fifo2: audio-controller@a114 {
+				compatible = "amlogic,meson-gx-audin-fifo";
 				#sound-dai-cells = <0>;
-				sound-name-prefix = "TODDR2";
+				sound-name-prefix = "AUDIN FIFO2";
 				reg = <0x0 0xa114 0x0 0x1c>;
 				status = "disabled";
 			};

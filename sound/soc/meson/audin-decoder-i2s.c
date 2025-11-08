@@ -12,19 +12,19 @@
 #include "gx-formatter.h"
 
 /* I2SIN_CTRL register and bits */
-#define AUDIN_I2SIN_CTRL	0x0
-	#define AUDIN_I2SIN_CTRL_I2SIN_DIR		BIT(0)
-	#define AUDIN_I2SIN_CTRL_I2SIN_CLK_SEL		BIT(1)
-	#define AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SEL	BIT(2)
-	#define AUDIN_I2SIN_CTRL_I2SIN_POS_SYNC		BIT(3)
-	#define AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SKEW_MASK	GENMASK(6, 4)
-	#define AUDIN_I2SIN_CTRL_I2SIN_LRCLK_INV	BIT(7)
-	#define AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK	GENMASK(9, 8)
-	#define AUDIN_I2SIN_CTRL_I2SIN_CHAN_EN_MASK	GENMASK(13, 10)
-	#define AUDIN_I2SIN_CTRL_I2SIN_EN		BIT(15)
+#define AUDIN_I2SIN_CTRL			0x0
+#define  AUDIN_I2SIN_CTRL_I2SIN_DIR		BIT(0)
+#define  AUDIN_I2SIN_CTRL_I2SIN_CLK_SEL		BIT(1)
+#define  AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SEL	BIT(2)
+#define  AUDIN_I2SIN_CTRL_I2SIN_POS_SYNC	BIT(3)
+#define  AUDIN_I2SIN_CTRL_I2SIN_LRCLK_SKEW_MASK	GENMASK(6, 4)
+#define  AUDIN_I2SIN_CTRL_I2SIN_LRCLK_INV	BIT(7)
+#define  AUDIN_I2SIN_CTRL_I2SIN_SIZE_MASK	GENMASK(9, 8)
+#define  AUDIN_I2SIN_CTRL_I2SIN_CHAN_EN_MASK	GENMASK(13, 10)
+#define  AUDIN_I2SIN_CTRL_I2SIN_EN		BIT(15)
 
 static struct snd_soc_dai *
-audin_formatter_get_be(struct snd_soc_dapm_widget *w)
+audin_decoder_i2s_get_be(struct snd_soc_dapm_widget *w)
 {
 	struct snd_soc_dapm_path *p;
 	struct snd_soc_dai *be;
@@ -36,7 +36,7 @@ audin_formatter_get_be(struct snd_soc_dapm_widget *w)
 		if (p->source->id == snd_soc_dapm_dai_out)
 			return (struct snd_soc_dai *)p->source->priv;
 
-		be = audin_formatter_get_be(p->source);
+		be = audin_decoder_i2s_get_be(p->source);
 		if (be)
 			return be;
 	}
@@ -45,9 +45,9 @@ audin_formatter_get_be(struct snd_soc_dapm_widget *w)
 }
 
 static struct gx_stream *
-audin_formatter_get_stream(struct snd_soc_dapm_widget *w)
+audin_decoder_i2s_get_stream(struct snd_soc_dapm_widget *w)
 {
-	struct snd_soc_dai *be = audin_formatter_get_be(w);
+	struct snd_soc_dai *be = audin_decoder_i2s_get_be(w);
 
 	if (!be)
 		return NULL;
@@ -55,20 +55,20 @@ audin_formatter_get_stream(struct snd_soc_dapm_widget *w)
 	return snd_soc_dai_dma_data_get_capture(be);
 }
 
-static void audin_formatter_enable(struct regmap *map)
+static void audin_decoder_i2s_enable(struct regmap *map)
 {
 	regmap_update_bits(map, AUDIN_I2SIN_CTRL,
 			   AUDIN_I2SIN_CTRL_I2SIN_EN,
 			   AUDIN_I2SIN_CTRL_I2SIN_EN);
 }
 
-static void audin_formatter_disable(struct regmap *map)
+static void audin_decoder_i2s_disable(struct regmap *map)
 {
 	regmap_update_bits(map, AUDIN_I2SIN_CTRL,
 			   AUDIN_I2SIN_CTRL_I2SIN_EN, 0);
 }
 
-static int audin_formatter_prepare(struct regmap *map,
+static int audin_decoder_i2s_prepare(struct regmap *map,
 				   const struct gx_formatter_hw *quirks,
 				   struct gx_stream *ts)
 {
@@ -155,63 +155,63 @@ static int audin_formatter_prepare(struct regmap *map,
 	return 0;
 }
 
-static const struct snd_soc_dapm_widget audin_formatter_dapm_widgets[] = {
+static const struct snd_soc_dapm_widget audin_decoder_i2s_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("IN",  NULL, 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_PGA_E("FRMT", SND_SOC_NOPM, 0, 0, NULL, 0,
+	SND_SOC_DAPM_PGA_E("DEC", SND_SOC_NOPM, 0, 0, NULL, 0,
 			   gx_formatter_event,
 			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
 	SND_SOC_DAPM_AIF_OUT("OUT", NULL, 0, SND_SOC_NOPM, 0, 0),
 };
 
-static const struct snd_soc_dapm_route audin_formatter_dapm_routes[] = {
-	{ "FRMT", NULL,  "IN" },
-	{ "OUT", NULL, "FRMT" },
+static const struct snd_soc_dapm_route audin_decoder_i2s_dapm_routes[] = {
+	{ "DEC", NULL, "IN" },
+	{ "OUT", NULL, "DEC" },
 };
 
-static const struct snd_soc_component_driver audin_formatter_component = {
-	.dapm_widgets		= audin_formatter_dapm_widgets,
-	.num_dapm_widgets	= ARRAY_SIZE(audin_formatter_dapm_widgets),
-	.dapm_routes		= audin_formatter_dapm_routes,
-	.num_dapm_routes	= ARRAY_SIZE(audin_formatter_dapm_routes),
+static const struct snd_soc_component_driver audin_decoder_i2s_component = {
+	.dapm_widgets		= audin_decoder_i2s_dapm_widgets,
+	.num_dapm_widgets	= ARRAY_SIZE(audin_decoder_i2s_dapm_widgets),
+	.dapm_routes		= audin_decoder_i2s_dapm_routes,
+	.num_dapm_routes	= ARRAY_SIZE(audin_decoder_i2s_dapm_routes),
 };
 
-static const struct regmap_config audin_formatter_regmap_cfg = {
+static const struct regmap_config audin_decoder_i2s_regmap_cfg = {
 	.reg_bits	= 32,
 	.val_bits	= 32,
 	.reg_stride	= 4,
 	.max_register	= 0x3,
 };
 
-static const struct gx_formatter_ops audin_formatter_ops = {
-	.get_stream	= audin_formatter_get_stream,
-	.prepare	= audin_formatter_prepare,
-	.enable		= audin_formatter_enable,
-	.disable	= audin_formatter_disable,
+static const struct gx_formatter_ops audin_decoder_i2s_ops = {
+	.get_stream	= audin_decoder_i2s_get_stream,
+	.prepare	= audin_decoder_i2s_prepare,
+	.enable		= audin_decoder_i2s_enable,
+	.disable	= audin_decoder_i2s_disable,
 };
 
-const struct gx_formatter_driver audin_formatter_drv = {
-	.component_drv	= &audin_formatter_component,
-	.regmap_cfg	= &audin_formatter_regmap_cfg,
-	.ops		= &audin_formatter_ops,
+const struct gx_formatter_driver audin_decoder_i2s_drv = {
+	.component_drv	= &audin_decoder_i2s_component,
+	.regmap_cfg	= &audin_decoder_i2s_regmap_cfg,
+	.ops		= &audin_decoder_i2s_ops,
 };
 
-static const struct of_device_id audin_formatter_of_match[] = {
+static const struct of_device_id audin_decoder_i2s_of_match[] = {
 	{
-		.compatible = "amlogic,audin-formatter",
-		.data = &audin_formatter_drv
+		.compatible = "amlogic,meson-gxbb-audin-decoder-i2s",
+		.data = &audin_decoder_i2s_drv
 	},
 	{}
 };
-MODULE_DEVICE_TABLE(of, audin_formatter_of_match);
+MODULE_DEVICE_TABLE(of, audin_decoder_i2s_of_match);
 
-static struct platform_driver audin_formatter_pdrv = {
+static struct platform_driver audin_decoder_i2s_pdrv = {
 	.probe = gx_formatter_probe,
 	.driver = {
-		.name = "meson-audin-formatter",
-		.of_match_table = audin_formatter_of_match,
+		.name = "meson-gx-audin-decoder-i2s",
+		.of_match_table = audin_decoder_i2s_of_match,
 	},
 };
-module_platform_driver(audin_formatter_pdrv);
+module_platform_driver(audin_decoder_i2s_pdrv);
 
 MODULE_DESCRIPTION("Meson AUDIN Formatter Driver");
 MODULE_AUTHOR("Valerio Setti <vsetti@baylibre.com>");
