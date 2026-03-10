@@ -154,6 +154,8 @@ static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 	if (ret)
 		dev_err(dai->dev, "failed to apply continuous clock setting\n");
 
+	aiu_encoder_i2s_divider_enable(component, 1);
+
 	return 0;
 }
 
@@ -161,7 +163,12 @@ static int aiu_encoder_i2s_hw_free(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
 	struct gx_stream *ts = snd_soc_dai_get_dma_data(dai, substream);
+	struct snd_soc_component *component = dai->component;
 
+	/* This is the last substream open and that is going to be closed. */
+	if (snd_soc_dai_active(dai) <= 1) {
+		aiu_encoder_i2s_divider_enable(component, 0);
+	}
 	return gx_stream_set_cont_clocks(ts, 0);
 }
 
@@ -270,11 +277,22 @@ static int aiu_encoder_i2s_startup(struct snd_pcm_substream *substream,
 			dev_err(dai->dev, "can't set iface rate constraint\n");
 	}
 
-	ret = clk_bulk_prepare_enable(aiu->i2s.clk_num, aiu->i2s.clks);
+	/*
+	 * Enable only clocks which are required for the interface internal
+	 * logic. MCLK is enabled/disabled from the formatter and the I2C
+	 * divider is enabled/disabled in "hw_params"/"hw_free", respectively.
+	 */
+	ret = clk_prepare_enable(aiu->i2s.clks[PCLK].clk);
 	if (ret)
-		dev_err(dai->dev, "failed to enable i2s clocks\n");
+		dev_err(dai->dev, "failed to enable PCLK\n");
 
-	aiu_encoder_i2s_divider_enable(dai->component, true);
+	ret = clk_prepare_enable(aiu->i2s.clks[MIXER].clk);
+	if (ret)
+		dev_err(dai->dev, "failed to enable MIXER\n");
+
+	ret = clk_prepare_enable(aiu->i2s.clks[AOCLK].clk);
+	if (ret)
+		dev_err(dai->dev, "failed to enable AOCLK\n");
 
 	return ret;
 }
@@ -284,10 +302,9 @@ static void aiu_encoder_i2s_shutdown(struct snd_pcm_substream *substream,
 {
 	struct aiu *aiu = snd_soc_component_get_drvdata(dai->component);
 
-	if (!snd_soc_dai_active(dai)) {
-		aiu_encoder_i2s_divider_enable(dai->component, false);
-	}
-	clk_bulk_disable_unprepare(aiu->i2s.clk_num, aiu->i2s.clks);
+	clk_disable_unprepare(aiu->i2s.clks[AOCLK].clk);
+	clk_disable_unprepare(aiu->i2s.clks[MIXER].clk);
+	clk_disable_unprepare(aiu->i2s.clks[PCLK].clk);
 }
 
 static int aiu_encoder_i2s_trigger(struct snd_pcm_substream *substream,
@@ -348,7 +365,7 @@ static int aiu_encoder_i2s_probe_dai(struct snd_soc_dai *dai)
 		snd_soc_dai_dma_data_set(dai, stream, ts);
 	}
 
-	iface->sclk = aiu->i2s.clks[AOCLK].clk;
+	iface->mclk = aiu->i2s.clks[MCLK].clk;
 
 	return 0;
 }

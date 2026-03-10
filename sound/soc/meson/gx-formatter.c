@@ -274,6 +274,10 @@ int gx_stream_set_cont_clocks(struct gx_stream *ts,
 		if (ts->clk_enabled)
 			return 0;
 
+		ret = clk_prepare_enable(ts->iface->mclk);
+		if (ret)
+			return ret;
+
 		ts->clk_enabled = true;
 		return 0;
 	}
@@ -281,6 +285,8 @@ int gx_stream_set_cont_clocks(struct gx_stream *ts,
 	/* Clocks are already disabled - skipping */
 	if (!ts->clk_enabled)
 		return 0;
+
+	clk_disable_unprepare(ts->iface->mclk);
 
 	ts->clk_enabled = false;
 	return ret;
