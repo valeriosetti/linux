@@ -188,8 +188,11 @@ static int aiu_encoder_i2s_hw_params(struct snd_pcm_substream *substream,
 				     struct snd_pcm_hw_params *params,
 				     struct snd_soc_dai *dai)
 {
+	struct aiu *aiu = snd_soc_component_get_drvdata(dai->component);
 	struct snd_soc_component *component = dai->component;
 	int ret;
+
+	aiu->i2s.iface.rate = params_rate(params);
 
 	/* Disable the clock while changing the settings */
 	aiu_encoder_i2s_divider_enable(component, false);
@@ -224,6 +227,8 @@ static int aiu_encoder_i2s_hw_free(struct snd_pcm_substream *substream,
 static int aiu_encoder_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	struct snd_soc_component *component = dai->component;
+	struct aiu *aiu = snd_soc_component_get_drvdata(component);
+	struct gx_iface *iface = &aiu->i2s.iface;
 	unsigned int inv = fmt & SND_SOC_DAIFMT_INV_MASK;
 	unsigned int val = 0;
 	unsigned int skew;
@@ -255,8 +260,11 @@ static int aiu_encoder_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		skew = 0;
 		break;
 	default:
+		dev_err(dai->dev, "unsupported dai format\n");
 		return -EINVAL;
 	}
+
+	iface->fmt = fmt;
 
 	val |= FIELD_PREP(AIU_CLK_CTRL_LRCLK_SKEW, skew);
 	snd_soc_component_update_bits(component, AIU_CLK_CTRL,
@@ -284,6 +292,8 @@ static int aiu_encoder_i2s_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 	if (ret)
 		dev_err(dai->dev, "Failed to set sysclk to %uHz", freq);
 
+	aiu->i2s.iface.mclk_rate = freq;
+
 	return ret;
 }
 
@@ -298,6 +308,7 @@ static int aiu_encoder_i2s_startup(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
 	struct aiu *aiu = snd_soc_component_get_drvdata(dai->component);
+	struct gx_iface *iface = &aiu->i2s.iface;
 	int ret;
 
 	/* Make sure the encoder gets either 2 or 8 channels */
@@ -307,6 +318,15 @@ static int aiu_encoder_i2s_startup(struct snd_pcm_substream *substream,
 	if (ret) {
 		dev_err(dai->dev, "adding channels constraints failed\n");
 		return ret;
+	}
+
+	if (snd_soc_dai_active(dai)) {
+		/* Apply interface wide rate symmetry */
+		ret = snd_pcm_hw_constraint_single(substream->runtime,
+						   SNDRV_PCM_HW_PARAM_RATE,
+						   iface->rate);
+		if (ret < 0)
+			dev_err(dai->dev, "can't set iface rate constraint\n");
 	}
 
 	ret = clk_bulk_prepare_enable(aiu->i2s.clk_num, aiu->i2s.clks);
