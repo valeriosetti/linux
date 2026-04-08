@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/sound/amlogic,meson-gx-audin-fifo.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Amlogic GX AUDIN FIFO controller
+
+maintainers:
+  - Valerio Setti <vsetti@baylibre.com>
+
+allOf:
+  - $ref: dai-common.yaml#
+
+properties:
+  compatible:
+    items:
+      - enum:
+          - amlogic,meson-gxbb-audin-fifo
+      - const: amlogic,meson-gx-audin-fifo
+
+  reg:
+    maxItems: 1
+
+  "#sound-dai-cells":
+    const: 0
+
+  clocks:
+    items:
+      - description: AUDIN peripheral clock
+
+  clock-names:
+    items:
+      - const: i2s_input_clk
+
+  sound-name-prefix: true
+
+required:
+  - compatible
+  - reg
+  - "#sound-dai-cells"
+  - clocks
+  - clock-names
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/gxbb-clkc.h>
+
+    audio-controller@a080 {
+      compatible = "amlogic,meson-gxbb-audin-fifo",
+                   "amlogic,meson-gx-audin-fifo";
+      #sound-dai-cells = <0>;
+      sound-name-prefix = "FIFO0";
+      reg = <0xa080 0x1c>;
+      clocks = <&clkc CLKID_I2S_SPDIF>;
+      clock-names = "i2s_input_clk";
+    };
